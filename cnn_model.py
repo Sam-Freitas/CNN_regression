@@ -54,7 +54,7 @@ model.compile(optimizer=optimizer,loss='MAE',metrics=['MSE'])
 
 history = model.fit(X_train,y_train,
     validation_data = (X_val,y_val),
-    batch_size=32,epochs=250,
+    batch_size=32,epochs=100,
     callbacks=[save_checkpoints,earlystop,redule_lr],
     verbose=0)
 
@@ -76,6 +76,9 @@ for i in range(X.shape[0]):
 plt.plot(np.arange(np.max(y)))
 plt.xlabel('Expected Age (months)')
 plt.ylabel('Predicted Age (months)')
+
+plt.savefig(fname = 'model_predictions.png')
+
 plt.show()
 
 print('eof')
