@@ -71,12 +71,12 @@ def fully_connected_CNN(use_dropout = False, height = 128, width = 128, channels
     pool_1 = MaxPooling2D((2,2))(conv_1)
 
     # first block of convolutions
-    conv_2 = Conv2D(inital_filter_size, (5,5), activation = None, kernel_initializer = 'he_normal', padding = 'same')(s)
+    conv_2 = Conv2D(inital_filter_size, (7,7), activation = None, kernel_initializer = 'he_normal', padding = 'same')(s)
     conv_2 = DropBlock2D(keep_prob = dropsize, block_size = blocksize)(conv_2, training = use_dropout)
     conv_2 = BatchNormalization()(conv_2)
     conv_2 = Activation('relu')(conv_2)
 
-    conv_2 = Conv2D(inital_filter_size, (5,5), activation = None, kernel_initializer = 'he_normal', padding = 'same')(conv_2)
+    conv_2 = Conv2D(inital_filter_size, (7,7), activation = None, kernel_initializer = 'he_normal', padding = 'same')(conv_2)
     conv_2 = DropBlock2D(keep_prob = dropsize, block_size = blocksize)(conv_2, training = use_dropout)
     conv_2 = BatchNormalization()(conv_2)
     conv_2 = Activation('relu')(conv_2)
@@ -84,12 +84,12 @@ def fully_connected_CNN(use_dropout = False, height = 128, width = 128, channels
     pool_2 = MaxPooling2D((2,2))(conv_2)
 
     # second block of convolutions
-    conv_2 = Conv2D(inital_filter_size*2, (5,5), activation = None, kernel_initializer = 'he_normal', padding = 'same') (pool_2)
+    conv_2 = Conv2D(inital_filter_size*2, (7,7), activation = None, kernel_initializer = 'he_normal', padding = 'same') (pool_2)
     conv_2 = DropBlock2D(keep_prob = dropsize, block_size = blocksize)(conv_2, training = use_dropout)
     conv_2 = BatchNormalization()(conv_2)
     conv_2 = Activation('relu')(conv_2)
 
-    conv_2 = Conv2D(inital_filter_size*2, (5,5), activation = None, kernel_initializer = 'he_normal', padding = 'same')(conv_2)
+    conv_2 = Conv2D(inital_filter_size*2, (7,7), activation = None, kernel_initializer = 'he_normal', padding = 'same')(conv_2)
     conv_2 = DropBlock2D(keep_prob = dropsize, block_size = blocksize)(conv_2, training = use_dropout)
     conv_2 = BatchNormalization()(conv_2)
     conv_2 = Activation('relu')(conv_2)
@@ -97,12 +97,12 @@ def fully_connected_CNN(use_dropout = False, height = 128, width = 128, channels
     pool_2 = MaxPooling2D((2,2))(conv_2)
 
     # third block of convolutions
-    conv_2 = Conv2D(inital_filter_size*4, (5,5), activation = None, kernel_initializer = 'he_normal', padding = 'same') (pool_2)
+    conv_2 = Conv2D(inital_filter_size*4, (7,7), activation = None, kernel_initializer = 'he_normal', padding = 'same') (pool_2)
     conv_2 = DropBlock2D(keep_prob = dropsize, block_size = blocksize)(conv_2, training = use_dropout)
     conv_2 = BatchNormalization()(conv_2)
     conv_2 = Activation('relu')(conv_2)
 
-    conv_2 = Conv2D(inital_filter_size*4, (5,5), activation = None, kernel_initializer = 'he_normal', padding = 'same')(conv_2)
+    conv_2 = Conv2D(inital_filter_size*4, (7,7), activation = None, kernel_initializer = 'he_normal', padding = 'same')(conv_2)
     conv_2 = DropBlock2D(keep_prob = dropsize, block_size = blocksize)(conv_2, training = use_dropout)
     conv_2 = BatchNormalization()(conv_2)
     conv_2 = Activation('relu')(conv_2)
@@ -111,9 +111,13 @@ def fully_connected_CNN(use_dropout = False, height = 128, width = 128, channels
 
     to_dense = tf.keras.layers.Concatenate()([pool_1,pool_2])
 
-    flattened = tf.keras.layers.Flatten()(pool_1)
+    flattened = tf.keras.layers.Flatten()(to_dense)
     
     d = Dense(1024,activation='relu')(flattened)
+
+    d = Dropout(0.3)(d, training = use_dropout)
+
+    d = Dense(128,activation='relu')(flattened)
 
     d = Dropout(0.3)(d, training = use_dropout)
 
@@ -149,9 +153,7 @@ def plot_model(model):
         print("Exporting model to png failed")
         print("Necessary packages: pydot (pip) and graphviz (brew)")
 
-def load_rotated_minst_dataset():
-
-    import time
+def load_rotated_minst_dataset(seed = None):
 
     (X,labels),(_,_) = tf.keras.datasets.mnist.load_data()
 
@@ -165,33 +167,25 @@ def load_rotated_minst_dataset():
     X_out = []
     y_out = []
 
-    for i in range(50):
-        angle = 0
-        y_out.append(angle)
-        rot = imutils.rotate(X, angle=angle)
-        resized = cv2.resize(rot, (32,32), interpolation = cv2.INTER_LINEAR)
-        X_out.append(resized)
+    if seed is not None:
+        np.random.seed(seed)
 
-    for i in range(950):
-        angle = np.random.randint(low = -90, high = 90)
-        y_out.append(angle)
-        rot = imutils.rotate(X, angle=angle)
-        resized = cv2.resize(rot, (32,32), interpolation = cv2.INTER_LINEAR)
-        X_out.append(resized)
+    y_out = np.asarray(np.random.randint(low = -90, high = 90, size = 1500))
+
+    for count,this_angle in enumerate(y_out):
+        rot = imutils.rotate(X, angle=this_angle)
+        X_out.append(rot)
 
     X_out = np.asarray(X_out)
     y_out = np.asarray(y_out)
 
-    X_out_test = []
-    y_out_test = []
-    for i in range(200):
-        angle = np.random.randint(low = -90, high = 90)
-        y_out_test.append(angle)
-        rot = imutils.rotate(X, angle=angle)
-        resized = cv2.resize(rot, (32,32), interpolation = cv2.INTER_LINEAR)
-        X_out_test.append(resized)
+    X_out_test = X_out[-200:]
+    y_out_test = y_out[-200:]
 
-    X_out_test = np.asarray(X_out_test)
-    y_out_test = np.asarray(y_out_test)
+    X_out_val = X_out[-500:-200]
+    y_out_val = y_out[-500:-200]
 
-    return (X_out,y_out), (X_out_test,y_out_test)
+    X_out = X_out[:1000]
+    y_out = y_out[:1000]
+
+    return (X_out,y_out),(X_out_val,y_out_val) ,(X_out_test,y_out_test)
