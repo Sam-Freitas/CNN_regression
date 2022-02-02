@@ -149,13 +149,13 @@ def plot_model(model):
         print("Exporting model to png failed")
         print("Necessary packages: pydot (pip) and graphviz (brew)")
 
-def load_rotate_minst_dataset():
+def load_rotated_minst_dataset():
 
     import time
 
     (X,labels),(_,_) = tf.keras.datasets.mnist.load_data()
 
-    only_1 = [labels==1]
+    only_1 = [labels==1][0]
 
     labels = labels[only_1]
     X = X[only_1]
@@ -165,14 +165,18 @@ def load_rotate_minst_dataset():
     X_out = []
     y_out = []
 
-    for i in range(1000):
+    for i in range(50):
+        angle = 0
+        y_out.append(angle)
+        rot = imutils.rotate(X, angle=angle)
+        resized = cv2.resize(rot, (32,32), interpolation = cv2.INTER_LINEAR)
+        X_out.append(resized)
+
+    for i in range(950):
         angle = np.random.randint(low = -90, high = 90)
         y_out.append(angle)
-
         rot = imutils.rotate(X, angle=angle)
-
         resized = cv2.resize(rot, (32,32), interpolation = cv2.INTER_LINEAR)
-
         X_out.append(resized)
 
     X_out = np.asarray(X_out)
@@ -183,10 +187,8 @@ def load_rotate_minst_dataset():
     for i in range(200):
         angle = np.random.randint(low = -90, high = 90)
         y_out_test.append(angle)
-
         rot = imutils.rotate(X, angle=angle)
         resized = cv2.resize(rot, (32,32), interpolation = cv2.INTER_LINEAR)
-
         X_out_test.append(resized)
 
     X_out_test = np.asarray(X_out_test)

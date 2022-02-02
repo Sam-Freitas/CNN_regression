@@ -1,8 +1,8 @@
 import tensorflow as tf
 import numpy as np
-from CNN_regression_model import fully_connected_CNN,ResNet50v2_regression, plot_model,load_rotate_minst_dataset
+from CNN_regression_model import fully_connected_CNN,ResNet50v2_regression, plot_model,load_rotated_minst_dataset
 
-(X,y), (test_X,test_y) = load_rotate_minst_dataset()
+(X,y), (test_X,test_y) = load_rotated_minst_dataset()
 
 model = fully_connected_CNN(height=X.shape[1],width=X.shape[2],use_dropout=True)
 # model = ResNet50v2_regression(height=X.shape[1],width=X.shape[2],use_dropout=False)
@@ -12,15 +12,17 @@ save_checkpoints = tf.keras.callbacks.ModelCheckpoint(
     filepath = 'model_weights/cp.ckpt', monitor = 'val_loss',
     mode = 'min',save_best_only = True,save_weights_only = True, verbose = 1)
 redule_lr = tf.keras.callbacks.ReduceLROnPlateau(
-    monitor = 'val_loss', factor = 0.5, patience = 10, min_lr = 0.00001, verbose = 1)
+    monitor = 'val_loss', factor = 0.75, patience = 10, min_lr = 0.00001, verbose = 1)
 earlystop = tf.keras.callbacks.EarlyStopping(
-    monitor = 'val_loss',min_delta = 0.01,patience = 50, verbose = 1)
+    monitor = 'val_loss',min_delta = 0.01,patience = 150, verbose = 1)
 
-model.compile(optimizer='adam',loss='MAE',metrics=['MSE'])
+optimizer = tf.keras.optimizers.RMSprop(learning_rate = 0.001, momentum = 0.0)
+
+model.compile(optimizer=optimizer,loss='MAE',metrics=['MSE'])
 
 history = model.fit(X,y,
-    batch_size=64,epochs=150,validation_split=0.1,
-    callbacks=[save_checkpoints,redule_lr,earlystop])
+    batch_size=64,epochs=300,validation_split=0.1,
+    callbacks=[save_checkpoints,earlystop])
 
 del model
 
