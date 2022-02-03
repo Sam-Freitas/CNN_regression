@@ -47,15 +47,16 @@ save_checkpoints = tf.keras.callbacks.ModelCheckpoint(
 redule_lr = tf.keras.callbacks.ReduceLROnPlateau(
     monitor = 'val_loss', factor = 0.1, patience = 3, min_lr = 0.00001, verbose = 1)
 earlystop = tf.keras.callbacks.EarlyStopping(
-    monitor = 'val_loss',min_delta = 0.01,patience = 2000, verbose = 1)
+    monitor = 'val_loss',min_delta = 0.01,patience = 10000, verbose = 1)
 
-optimizer = tf.keras.optimizers.RMSprop(learning_rate = 0.001)
+# optimizer = tf.keras.optimizers.RMSprop(learning_rate = 0.002, momentum=0.9)
+optimizer = tf.keras.optimizers.RMSprop(learning_rate = 0.0025, momentum=0.9)
 
 model.compile(optimizer=optimizer,loss='MAE',metrics=['MSE'])
 
 history = model.fit(X_train,y_train,
     validation_data = (X_val,y_val),
-    batch_size=32,epochs=3000,
+    batch_size=32,epochs=12000,
     callbacks=[save_checkpoints,earlystop],
     verbose=0)
 
