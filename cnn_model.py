@@ -55,7 +55,7 @@ model.compile(optimizer=optimizer,loss='MAE',metrics=['MSE'])
 
 history = model.fit(X_train,y_train,
     validation_data = (X_val,y_val),
-    batch_size=32,epochs=2000,
+    batch_size=32,epochs=3000,
     callbacks=[save_checkpoints,earlystop],
     verbose=0)
 
