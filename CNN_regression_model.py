@@ -21,11 +21,7 @@ import cv2
 import os
 
 
-def fully_connected_CNN(use_dropout = False, height = 128, width = 128, channels = 1, kernal_size = (3,3)):
-
-    inital_filter_size = 16
-    dropsize = 0.9
-    blocksize = 7
+def fully_connected_CNN(use_dropout = False, height = 128, width = 128, channels = 1, kernal_size = (3,3), inital_filter_size = 16,dropsize = 0.9,blocksize = 7):
 
     inputs = Input((height, width, channels))
 
