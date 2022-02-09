@@ -24,14 +24,14 @@ def fully_connected_dense_model(num_features = 10000, use_dropout = False):
 
     s = tf.keras.layers.Flatten()(s)
 
-    d = Dense(2048)(s)
-    d = Activation('relu')(d)
+    d = Dense(3072)(s)
+    d = Activation('gelu')(d)
     d = Dropout(0.6)(d, training = use_dropout)
-    d = Dense(1024)(d)
-    d = Activation('relu')(d)
-    d = Dropout(0.6)(d, training = use_dropout)
+    # d = Dense(1024)(d)
+    # d = Activation('gelu')(d)
+    # d = Dropout(0.6)(d, training = use_dropout)
     d = Dense(512)(d)
-    d = Activation('relu')(d)
+    d = Activation('gelu')(d)
     d = Dropout(0.6)(d, training = use_dropout)
 
     output = Dense(1,activation='linear')(d)
