@@ -15,8 +15,8 @@ import json
 num = 750
 
 print('loading in data')
-data = pd.read_csv('raw_filtered_rotated.csv',header=0, index_col=0)
-metadata = pd.read_csv('meta_filtered.csv',header=0, index_col=0)
+data = pd.read_csv('dense_regression/raw_filtered_rotated.csv',header=0, index_col=0)
+metadata = pd.read_csv('dense_regression/meta_filtered.csv',header=0, index_col=0)
 
 print('parsing data')
 single_tissue_index = metadata['Healthy'].values == True
@@ -50,14 +50,13 @@ y_raw = np.asarray(y)
 
 MM = MinMaxScaler()
 X_norm = MM.fit_transform(X_raw)
-y_norm = (y - np.min(y))/np.max(y-np.min(y))
+y_norm = y_raw
 
 val_idx = []
 for unique_num in np.unique(y_raw): #[0::2]:
     indices = np.where(y_raw==unique_num)
     if indices[0].shape[0] > 3:
         val_idx.extend(np.where(y_raw==unique_num)[0][0:3])
-
 
 train_idx = np.arange(y_norm.shape[0])
 train_idx = np.delete(train_idx,val_idx)
@@ -72,24 +71,35 @@ del data, data_std, metadata, metadata_healthy, single_tissue_index, sorted_std_
 print('Setting up model')
 model = fully_connected_dense_model(num_features = num, use_dropout=True)
 
-epochs = 1000
+epochs = 10000
 
-optimizer = tf.keras.optimizers.RMSprop(learning_rate = 0.00001, momentum = 0.75)#, momentum=0.9)
+optimizer = tf.keras.optimizers.RMSprop(momentum = 0.75)#,learning_rate = 0.00001)#, momentum=0.9)
 model.compile(optimizer=optimizer,loss='MAE',metrics=['MSE','accuracy'])
 save_checkpoints = tf.keras.callbacks.ModelCheckpoint(
-    filepath = 'model_weights_test/cp.ckpt', monitor = 'val_loss',
+    filepath = 'dense_regression/model_weights_test/cp.ckpt', monitor = 'val_loss',
     mode = 'min',save_best_only = True,save_weights_only = True, verbose = 1)
 redule_lr = tf.keras.callbacks.ReduceLROnPlateau(
     monitor = 'val_loss', factor = 0.1, patience = 25, min_lr = 0.0000001, verbose = 1)
 earlystop = tf.keras.callbacks.EarlyStopping(
-    monitor = 'val_loss',min_delta = 0.01,patience = 750, verbose = 1)
+    monitor = 'val_loss',min_delta = 0.01,patience = 250, verbose = 1)
+
+def scheduler(epoch, lr):
+    if epoch < 25:
+        lr = 0.0001
+    elif epoch > 24 and epoch < 100:
+        lr = 0.00005
+    else:
+        lr = 0.00001
+    return lr
+
+lr_scheduler = tf.keras.callbacks.LearningRateScheduler(scheduler)
 
 model.summary()
 
 history = model.fit(X_train,y_train,
     validation_data = (X_val,y_val),
     batch_size=4,epochs=epochs,
-    callbacks=[save_checkpoints,earlystop],
+    callbacks=[save_checkpoints,earlystop,lr_scheduler],
     verbose=1)
 
 eval_result = model.evaluate(X_norm,y_norm,batch_size=1,verbose=1,return_dict=True)
@@ -104,7 +114,7 @@ plt.plot(np.linspace(0, np.max(y_norm)),np.linspace(0, np.max(y_norm)))
 plt.xlabel('Expected Age (years)')
 plt.ylabel('Predicted Age (years)')
 
-plt.savefig(fname = "model_predictions" + str(this_tissue).replace('/','-') + ".png")
+plt.savefig(fname = "dense_regression/model_predictions" + str(this_tissue).replace('/','-') + ".png")
 
 plt.close('all')
 
@@ -117,9 +127,9 @@ res = dict()
 for key in eval_result: res[key] = round(eval_result[key],6)
 
 plt.legend(loc="upper left")
-plt.ylim([0,0.5])
+plt.ylim([0,15])
 plt.title(json.dumps(res))
-plt.savefig(fname=  "training_history" + str(this_tissue).replace('/','-') + ".png")
+plt.savefig(fname=  "dense_regression/training_history" + str(this_tissue).replace('/','-') + ".png")
 
 plt.close('all')
 

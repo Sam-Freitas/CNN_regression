@@ -1,3 +1,5 @@
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
 from skimage import measure
 from tqdm import tqdm
 from natsort import natsorted, natsort_keygen
@@ -13,8 +15,8 @@ from dense_model import fully_connected_dense_model
 num = 750
 
 print('loading in data')
-data = pd.read_csv('raw_filtered_rotated.csv',header=0, index_col=0)
-metadata = pd.read_csv('meta_filtered.csv',header=0, index_col=0)
+data = pd.read_csv('dense_regression/raw_filtered_rotated.csv',header=0, index_col=0)
+metadata = pd.read_csv('dense_regression/meta_filtered.csv',header=0, index_col=0)
 
 print('parsing data')
 single_tissue_index = metadata['Healthy'].values == True
@@ -49,19 +51,19 @@ y_raw = np.asarray(y)
 
 MM = MinMaxScaler()
 X_norm = MM.fit_transform(X_raw)
-y_norm = (y - np.min(y))/np.max(y-np.min(y))
+y_norm = y_raw
 
 del data, data_std, metadata, metadata_healthy, single_tissue_index, sorted_std_idx_ascend, SRR_values, this_metadata, this_imgs_meta_idx, srr_id, this_data
 
 print('Setting up model')
 model = fully_connected_dense_model(num_features = num, use_dropout=False)
 
-optimizer = tf.keras.optimizers.RMSprop(learning_rate = 0.00001)#, momentum=0.9)
+optimizer = tf.keras.optimizers.RMSprop()#, momentum=0.9)
 model.compile(optimizer=optimizer,loss='MAE',metrics=['MSE'])
 
 model.summary()
 
-model.load_weights('model_weights_test/cp.ckpt')
+model.load_weights('dense_regression/model_weights_test/cp.ckpt')
 
 eval_result = model.evaluate(X_norm,y_norm,batch_size=1,verbose=1,return_dict=True)
 
@@ -74,13 +76,15 @@ cor_xy = cor_matrix[0,1]
 r_squared = round(cor_xy**2,4)
 print(r_squared)
 
+model.save('dense_regression/compiled_models/' + str(r_squared)[2:])
+
 plt.scatter(y_norm,predicted,color = 'r',alpha=0.25)
 plt.plot(np.linspace(0, np.max(y_norm)),np.linspace(0, np.max(y_norm)))
 plt.text(0,1,"r^2: " + str(r_squared),fontsize = 12)
 plt.xlabel('Expected Age (years)')
 plt.ylabel('Predicted Age (years)')
 
-plt.savefig(fname = "output_" + str(this_tissue).replace('/','-') + ".png")
+plt.savefig(fname = "dense_regression/output_" + str(this_tissue).replace('/','-') + ".png")
 
 plt.close('all')
 
