@@ -1,20 +1,21 @@
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
 import tensorflow as tf
 import numpy as np
 import pandas as pd
-import os
 import glob
 import json
 import tqdm
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import MinMaxScaler
 from natsort import natsorted, natsort_keygen
-from CNN_regression_model import fully_connected_CNN,ResNet50v2_regression, plot_model,load_rotated_minst_dataset
+from CNN_regression_model import fully_connected_CNN_v2, plot_model
 
 # (X,y), (X_val,y_val), (test_X,test_y) = load_rotated_minst_dataset(seed = 50)
 
 print('reading in metadata')
-data_path = '/home/u23/samfreitas/NN_trainings/IGTD/Results/human_healthy_std_2/data'
-metadata_path = '/home/u23/samfreitas/NN_trainings/IGTD/Data/human_data/meta_filtered.csv'
+data_path = '/Users/samfreitas/Documents/Sutphin lab/Neural Nets/IGTD/Results/human_headthy_std_1/data'
+metadata_path = '/Users/samfreitas/Documents/Sutphin lab/Neural Nets/IGTD/Data/meta_filtered.csv'
 imgs_list = natsorted(glob.glob(os.path.join(data_path,'*.txt')))
 metadata = pd.read_csv(metadata_path)
 
@@ -24,7 +25,7 @@ metadata_healthy = metadata.iloc[healthy_idx,:]
 SRR_values = metadata_healthy['SRR.ID'].values
 unique_tissues = np.unique(metadata_healthy['Tissue'].values)
 
-this_tissue = 'Adipose;'
+this_tissue = 'Blood;PBMC'
 
 # this_tissue = unique_tissues[2]
 print('Current tissue',this_tissue)
@@ -51,7 +52,7 @@ X = np.asarray(X) / 255
 y = np.asarray(y)
 
 X_scale = X - np.median(X,axis = 0)
-y_norm = (y - np.min(y))/np.max(y-np.min(y))
+y_norm = y
 
 val_idx = []
 for unique_num in np.unique(y): #[0::2]:
@@ -65,7 +66,7 @@ y_train = y_norm[train_idx]
 X_val = X_scale[val_idx]
 y_val = y_norm[val_idx]
 
-model = fully_connected_CNN(height=X.shape[1],width=X.shape[2],use_dropout=True,inital_filter_size=2)
+model = fully_connected_CNN_v2(height=X.shape[1],width=X.shape[2],use_dropout=True,inital_filter_size=32)
 # model = ResNet50v2_regression(height=X.shape[1],width=X.shape[2],use_dropout=False)
 plot_model(model)
 
@@ -84,13 +85,13 @@ model.compile(optimizer=optimizer,loss='MAE',metrics=['MSE'])
 
 history = model.fit(X_train,y_train,
     validation_data = (X_val,y_val),
-    batch_size=64,epochs=10000,
+    batch_size=1,epochs=2,
     callbacks=[save_checkpoints,earlystop,redule_lr],
     verbose=1)
 
 del model
 
-model = fully_connected_CNN(height=X.shape[1],width=X.shape[2],use_dropout=False,inital_filter_size=2)
+model = fully_connected_CNN_v2(height=X.shape[1],width=X.shape[2],use_dropout=False,inital_filter_size=32)
 model.compile(optimizer=optimizer,loss='MAE',metrics=['MSE'])
 model.load_weights('model_weights/cp.ckpt')
 
