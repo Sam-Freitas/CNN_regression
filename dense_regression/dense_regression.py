@@ -2,6 +2,8 @@ from tqdm import tqdm
 from natsort import natsorted, natsort_keygen
 import matplotlib.pyplot as plt
 import albumentations as A
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
 import tensorflow as tf
 import numpy as np
 import pandas as pd
@@ -10,7 +12,7 @@ from dense_model import fully_connected_dense_model
 import json
 
 # set up variables 
-num = 900
+num = 750
 
 print('loading in data')
 data = pd.read_csv('raw_filtered_rotated.csv',header=0, index_col=0)
@@ -51,8 +53,11 @@ X_norm = MM.fit_transform(X_raw)
 y_norm = (y - np.min(y))/np.max(y-np.min(y))
 
 val_idx = []
-for unique_num in np.unique(y_raw)[0::2]:
-    val_idx.append(np.where(y_raw==unique_num)[0][0])
+for unique_num in np.unique(y_raw): #[0::2]:
+    indices = np.where(y_raw==unique_num)
+    if indices[0].shape[0] > 3:
+        val_idx.extend(np.where(y_raw==unique_num)[0][0:3])
+
 
 train_idx = np.arange(y_norm.shape[0])
 train_idx = np.delete(train_idx,val_idx)
@@ -69,32 +74,23 @@ model = fully_connected_dense_model(num_features = num, use_dropout=True)
 
 epochs = 1000
 
-optimizer = tf.keras.optimizers.RMSprop(learning_rate = 0.0001, momentum = 0.75)#, momentum=0.9)
+optimizer = tf.keras.optimizers.RMSprop(learning_rate = 0.00001, momentum = 0.75)#, momentum=0.9)
 model.compile(optimizer=optimizer,loss='MAE',metrics=['MSE','accuracy'])
 save_checkpoints = tf.keras.callbacks.ModelCheckpoint(
-    filepath = 'model_weights/cp.ckpt', monitor = 'val_loss',
+    filepath = 'model_weights_test/cp.ckpt', monitor = 'val_loss',
     mode = 'min',save_best_only = True,save_weights_only = True, verbose = 1)
 redule_lr = tf.keras.callbacks.ReduceLROnPlateau(
     monitor = 'val_loss', factor = 0.1, patience = 25, min_lr = 0.0000001, verbose = 1)
 earlystop = tf.keras.callbacks.EarlyStopping(
-    monitor = 'val_loss',min_delta = 0.01,patience = 150, verbose = 1)
+    monitor = 'val_loss',min_delta = 0.01,patience = 750, verbose = 1)
 
 model.summary()
 
 history = model.fit(X_train,y_train,
     validation_data = (X_val,y_val),
-    batch_size=2,epochs=epochs,
-    callbacks=[save_checkpoints],
+    batch_size=4,epochs=epochs,
+    callbacks=[save_checkpoints,earlystop],
     verbose=1)
-
-del model
-
-print('Setting up model')
-model = fully_connected_dense_model(num_features = num, use_dropout=False)
-
-optimizer = tf.keras.optimizers.RMSprop(learning_rate = 0.0001)#, momentum=0.9)
-model.compile(optimizer=optimizer,loss='MAE',metrics=['MSE'])
-model.load_weights('model_weights/cp.ckpt')
 
 eval_result = model.evaluate(X_norm,y_norm,batch_size=1,verbose=1,return_dict=True)
 

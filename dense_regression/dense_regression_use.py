@@ -10,7 +10,7 @@ from sklearn.preprocessing import MinMaxScaler
 from dense_model import fully_connected_dense_model
 
 # set up variables 
-num = 900
+num = 750
 
 print('loading in data')
 data = pd.read_csv('raw_filtered_rotated.csv',header=0, index_col=0)
@@ -28,7 +28,8 @@ metadata_healthy = metadata.iloc[single_tissue_index,:]
 SRR_values = metadata_healthy['SRR.ID'].values
 unique_tissues = np.unique(metadata_healthy['Tissue'].values)
 
-this_tissue = 'Adipose;'
+this_tissue = 'Blood;PBMC'
+# this_tissue = 'Adipose;'
 print('Current tissue',this_tissue)
 
 X = []
@@ -55,19 +56,12 @@ del data, data_std, metadata, metadata_healthy, single_tissue_index, sorted_std_
 print('Setting up model')
 model = fully_connected_dense_model(num_features = num, use_dropout=False)
 
-optimizer = tf.keras.optimizers.RMSprop(learning_rate = 0.0001)#, momentum=0.9)
+optimizer = tf.keras.optimizers.RMSprop(learning_rate = 0.00001)#, momentum=0.9)
 model.compile(optimizer=optimizer,loss='MAE',metrics=['MSE'])
-save_checkpoints = tf.keras.callbacks.ModelCheckpoint(
-    filepath = 'model_weights/cp.ckpt', monitor = 'val_loss',
-    mode = 'min',save_best_only = True,save_weights_only = True, verbose = 1)
-redule_lr = tf.keras.callbacks.ReduceLROnPlateau(
-    monitor = 'val_loss', factor = 0.1, patience = 250, min_lr = 0.0000001, verbose = 1)
-earlystop = tf.keras.callbacks.EarlyStopping(
-    monitor = 'val_loss',min_delta = 0.01,patience = 20000, verbose = 1)
 
 model.summary()
 
-model.load_weights('model_weights/cp.ckpt')
+model.load_weights('model_weights_test/cp.ckpt')
 
 eval_result = model.evaluate(X_norm,y_norm,batch_size=1,verbose=1,return_dict=True)
 
@@ -75,9 +69,14 @@ plt.figure(1)
 
 predicted = model.predict(X_norm,batch_size=1).squeeze()
 
-plt.scatter(y_norm,predicted,color = 'r',alpha=0.5)
+cor_matrix = np.corrcoef(predicted.squeeze(),y_norm)
+cor_xy = cor_matrix[0,1]
+r_squared = round(cor_xy**2,4)
+print(r_squared)
 
+plt.scatter(y_norm,predicted,color = 'r',alpha=0.25)
 plt.plot(np.linspace(0, np.max(y_norm)),np.linspace(0, np.max(y_norm)))
+plt.text(0,1,"r^2: " + str(r_squared),fontsize = 12)
 plt.xlabel('Expected Age (years)')
 plt.ylabel('Predicted Age (years)')
 
