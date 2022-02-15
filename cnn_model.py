@@ -14,8 +14,8 @@ from CNN_regression_model import fully_connected_CNN_v2, plot_model
 # (X,y), (X_val,y_val), (test_X,test_y) = load_rotated_minst_dataset(seed = 50)
 
 print('reading in metadata')
-data_path = '/Users/samfreitas/Documents/Sutphin lab/Neural Nets/IGTD/Results/human_headthy_std_1/data'
-metadata_path = '/Users/samfreitas/Documents/Sutphin lab/Neural Nets/IGTD/Data/meta_filtered.csv'
+data_path = '/groups/sutphin/NN_trainings/IGTD/Results/Blood;PBMC_2/data'
+metadata_path = '/home/u23/samfreitas/NN_trainings/CNN_regression/dense_regression/meta_filtered.csv'
 imgs_list = natsorted(glob.glob(os.path.join(data_path,'*.txt')))
 metadata = pd.read_csv(metadata_path)
 
@@ -42,21 +42,24 @@ for count in tqdm.tqdm(range(len(imgs_list))):
     this_metadata = metadata_healthy.iloc[this_imgs_meta_idx,:]
     if (this_metadata['Tissue'].values == this_tissue).squeeze():
         y.append(metadata_healthy.iloc[this_imgs_meta_idx,:]['Age'].values.squeeze())
-        X.append(np.loadtxt(this_img, comments='#',delimiter="\t",unpack=False))
+        temp_img = np.loadtxt(this_img, comments='#',delimiter="\t",unpack=False)
+        X.append(temp_img/np.max(temp_img))
 
 if not y:
     print('BAD LIST')
 
 del count,this_img
-X = np.asarray(X) / 255
+X = np.asarray(X)
 y = np.asarray(y)
 
-X_scale = X - np.median(X,axis = 0)
+X_scale = X #- np.median(X,axis = 0)
 y_norm = y
 
 val_idx = []
-for unique_num in np.unique(y): #[0::2]:
-    val_idx.append(np.where(y==unique_num)[0][0])
+for unique_num in np.unique(y_norm): #[0::2]:
+    indices = np.where(y_norm==unique_num)
+    if indices[0].shape[0] > 3:
+        val_idx.extend(np.where(y_norm==unique_num)[0][0:3])
 
 train_idx = np.arange(y.shape[0])
 train_idx = np.delete(train_idx,val_idx)
@@ -70,23 +73,34 @@ model = fully_connected_CNN_v2(height=X.shape[1],width=X.shape[2],use_dropout=Tr
 # model = ResNet50v2_regression(height=X.shape[1],width=X.shape[2],use_dropout=False)
 plot_model(model)
 
+epochs = 500
+
 save_checkpoints = tf.keras.callbacks.ModelCheckpoint(
     filepath = 'model_weights/cp.ckpt', monitor = 'val_loss',
     mode = 'min',save_best_only = True,save_weights_only = True, verbose = 1)
 redule_lr = tf.keras.callbacks.ReduceLROnPlateau(
     monitor = 'val_loss', factor = 0.1, patience = 250, min_lr = 0.0000001, verbose = 1)
 earlystop = tf.keras.callbacks.EarlyStopping(
-    monitor = 'val_loss',min_delta = 0.01,patience = 20000, verbose = 1)
+    monitor = 'val_loss',min_delta = 0.01,patience = 250, verbose = 1)
+# optimizer = tf.keras.optimizers.RMSprop(momentum=0.75)#, momentum=0.9)
+optimizer = tf.keras.optimizers.Adam()
 
-# optimizer = tf.keras.optimizers.RMSprop(learning_rate = 0.002, momentum=0.9)
-optimizer = tf.keras.optimizers.RMSprop(learning_rate = 0.002, momentum=0.9)#, momentum=0.9)
+def scheduler(epoch, lr):
+    if epoch < 50:
+        lr = 0.0001
+    elif epoch > 49 and epoch < 100:
+        lr = 0.00005
+    else:
+        lr = 0.00001
+    return lr
+lr_scheduler = tf.keras.callbacks.LearningRateScheduler(scheduler)
 
 model.compile(optimizer=optimizer,loss='MAE',metrics=['MSE'])
 
 history = model.fit(X_train,y_train,
     validation_data = (X_val,y_val),
-    batch_size=1,epochs=2,
-    callbacks=[save_checkpoints,earlystop,redule_lr],
+    batch_size=1,epochs=epochs,
+    callbacks=[save_checkpoints,earlystop,lr_scheduler],
     verbose=1)
 
 del model
@@ -101,9 +115,16 @@ plt.figure(1)
 
 predicted = model.predict(X_scale).squeeze()
 
-plt.scatter(y_norm,predicted,color = 'r',alpha=0.5)
+cor_matrix = np.corrcoef(predicted.squeeze(),y_norm)
+cor_xy = cor_matrix[0,1]
+r_squared = round(cor_xy**2,4)
+print(r_squared)
 
-plt.plot(np.linspace(0, np.max(y_norm)),np.linspace(0, np.max(y_norm)))
+model.save('compiled_models/' + str(r_squared)[2:])
+
+plt.scatter(y_norm,predicted,color = 'r',alpha=0.5)
+plt.plot(np.linspace(np.min(y_norm), np.max(y_norm)),np.linspace(np.min(y_norm), np.max(y_norm)))
+plt.text(np.min(y_norm),np.max(y_norm),"r^2: " + str(r_squared),fontsize = 12)
 plt.xlabel('Expected Age (years)')
 plt.ylabel('Predicted Age (years)')
 
@@ -120,7 +141,7 @@ res = dict()
 for key in eval_result: res[key] = round(eval_result[key],6)
 
 plt.legend(loc="upper left")
-plt.ylim([0,0.5])
+plt.ylim([0,15])
 plt.title(json.dumps(res))
 plt.savefig(fname=  "training_history" + str(this_tissue).replace('/','-') + ".png")
 
