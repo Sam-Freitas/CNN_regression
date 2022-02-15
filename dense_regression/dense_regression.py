@@ -12,7 +12,7 @@ from dense_model import fully_connected_dense_model
 import json
 
 # set up variables 
-num = 750
+num = 784
 
 print('loading in data')
 data = pd.read_csv('dense_regression/raw_filtered_rotated.csv',header=0, index_col=0)
@@ -81,15 +81,15 @@ save_checkpoints = tf.keras.callbacks.ModelCheckpoint(
 redule_lr = tf.keras.callbacks.ReduceLROnPlateau(
     monitor = 'val_loss', factor = 0.1, patience = 25, min_lr = 0.0000001, verbose = 1)
 earlystop = tf.keras.callbacks.EarlyStopping(
-    monitor = 'val_loss',min_delta = 0.01,patience = 250, verbose = 1)
+    monitor = 'val_loss',min_delta = 0.01,patience = 10000, verbose = 1)
 
 def scheduler(epoch, lr):
-    if epoch < 25:
-        lr = 0.0001
-    elif epoch > 24 and epoch < 100:
-        lr = 0.00005
-    else:
+    if epoch < 100:
         lr = 0.00001
+    elif epoch > 99 and epoch < 250:
+        lr = 0.000005
+    else:
+        lr = 0.000001
     return lr
 
 lr_scheduler = tf.keras.callbacks.LearningRateScheduler(scheduler)

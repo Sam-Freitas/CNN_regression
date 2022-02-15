@@ -12,7 +12,7 @@ from sklearn.preprocessing import MinMaxScaler
 from dense_model import fully_connected_dense_model
 
 # set up variables 
-num = 750
+num = 784
 
 print('loading in data')
 data = pd.read_csv('dense_regression/raw_filtered_rotated.csv',header=0, index_col=0)
@@ -79,7 +79,7 @@ print(r_squared)
 model.save('dense_regression/compiled_models/' + str(r_squared)[2:])
 
 plt.scatter(y_norm,predicted,color = 'r',alpha=0.25)
-plt.plot(np.linspace(0, np.max(y_norm)),np.linspace(0, np.max(y_norm)))
+plt.plot(np.linspace(np.min(y_norm), np.max(y_norm)),np.linspace(np.min(y_norm), np.max(y_norm)))
 plt.text(0,1,"r^2: " + str(r_squared),fontsize = 12)
 plt.xlabel('Expected Age (years)')
 plt.ylabel('Predicted Age (years)')
