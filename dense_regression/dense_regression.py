@@ -11,6 +11,7 @@ from sklearn.preprocessing import MinMaxScaler
 from dense_model import fully_connected_dense_model
 import json
 from scipy import stats
+from numpy.polynomial import Polynomial
 
 # set up variables 
 num = 1024
@@ -23,6 +24,12 @@ def idx_by_spearman_coef(data,metadata): # return the sorted calues by the small
     for count,this_gene in enumerate(inital_gene_order):
         these_points = data[this_gene].values
         sprmn_coef = stats.spearmanr(ages,these_points)
+        c = Polynomial.fit(ages,these_points, deg = 1,full = True)
+        x, px = c[0].linspace()
+        # plt.plot(ages,these_points,'ro')
+        # plt.plot(x,px)
+        # print(c[1][0])
+        # if c[1][0].squeeze() > 0 and np.median(these_points) > 10:
         output[this_gene] = [sprmn_coef.correlation,sprmn_coef.pvalue]
     df = pd.DataFrame.from_dict(output,orient = 'index', columns = ['Spearman_coef','p-value'])
     df = df.sort_values(['p-value'], ascending = True)
