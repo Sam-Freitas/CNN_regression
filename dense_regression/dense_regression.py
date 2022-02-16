@@ -30,8 +30,8 @@ def idx_by_spearman_coef(data,metadata): # return the sorted calues by the small
         # plt.plot(x,px)
         # print(c[1][0])
         # if c[1][0].squeeze() > 0 and np.median(these_points) > 10:
-        output[this_gene] = [sprmn_coef.correlation,sprmn_coef.pvalue]
-    df = pd.DataFrame.from_dict(output,orient = 'index', columns = ['Spearman_coef','p-value'])
+        output[this_gene] = [sprmn_coef.correlation,sprmn_coef.pvalue,c[1][0][0]]
+    df = pd.DataFrame.from_dict(output,orient = 'index', columns = ['Spearman_coef','p-value','poly'])
     df = df.sort_values(['p-value'], ascending = True)
     sorted_gene_order = list(df.index)
     idx = np.zeros(shape = (1,len(sorted_gene_order))).squeeze()
