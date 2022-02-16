@@ -10,11 +10,18 @@ import matplotlib.pyplot as plt
 from sklearn.preprocessing import MinMaxScaler
 from natsort import natsorted, natsort_keygen
 from CNN_regression_model import fully_connected_CNN_v2, plot_model
+from sklearn.preprocessing import PowerTransformer
 
 # (X,y), (X_val,y_val), (test_X,test_y) = load_rotated_minst_dataset(seed = 50)
 
 print('reading in metadata')
-data_path = '/groups/sutphin/NN_trainings/IGTD/Results/Blood;PBMC_2/data'
+
+this_tissue = 'Blood;PBMC'
+# this_tissue = 'Adipose;'
+
+dataset = '_1_900'
+
+data_path = '/groups/sutphin/NN_trainings/IGTD/Results/' + this_tissue + dataset +'/data'
 metadata_path = '/home/u23/samfreitas/NN_trainings/CNN_regression/dense_regression/meta_filtered.csv'
 imgs_list = natsorted(glob.glob(os.path.join(data_path,'*.txt')))
 metadata = pd.read_csv(metadata_path)
@@ -25,14 +32,13 @@ metadata_healthy = metadata.iloc[healthy_idx,:]
 SRR_values = metadata_healthy['SRR.ID'].values
 unique_tissues = np.unique(metadata_healthy['Tissue'].values)
 
-this_tissue = 'Blood;PBMC'
-
 # this_tissue = unique_tissues[2]
 print('Current tissue',this_tissue)
 
 X = []
 y = []
 print('reading in data')
+PT = PowerTransformer()
 for count in tqdm.tqdm(range(len(imgs_list))):
 
     this_img = imgs_list[count]
@@ -43,7 +49,7 @@ for count in tqdm.tqdm(range(len(imgs_list))):
     if (this_metadata['Tissue'].values == this_tissue).squeeze():
         y.append(metadata_healthy.iloc[this_imgs_meta_idx,:]['Age'].values.squeeze())
         temp_img = np.loadtxt(this_img, comments='#',delimiter="\t",unpack=False)
-        X.append(temp_img/np.max(temp_img))
+        X.append((temp_img - np.min(temp_img))/(np.max(temp_img) - np.min(temp_img)))#/np.max(temp_img))
 
 if not y:
     print('BAD LIST')
@@ -73,7 +79,7 @@ model = fully_connected_CNN_v2(height=X.shape[1],width=X.shape[2],use_dropout=Tr
 # model = ResNet50v2_regression(height=X.shape[1],width=X.shape[2],use_dropout=False)
 plot_model(model)
 
-epochs = 500
+epochs = 3500
 
 save_checkpoints = tf.keras.callbacks.ModelCheckpoint(
     filepath = 'model_weights/cp.ckpt', monitor = 'val_loss',
@@ -81,7 +87,7 @@ save_checkpoints = tf.keras.callbacks.ModelCheckpoint(
 redule_lr = tf.keras.callbacks.ReduceLROnPlateau(
     monitor = 'val_loss', factor = 0.1, patience = 250, min_lr = 0.0000001, verbose = 1)
 earlystop = tf.keras.callbacks.EarlyStopping(
-    monitor = 'val_loss',min_delta = 0.01,patience = 250, verbose = 1)
+    monitor = 'val_loss',min_delta = 0.01,patience = epochs, verbose = 1)
 # optimizer = tf.keras.optimizers.RMSprop(momentum=0.75)#, momentum=0.9)
 optimizer = tf.keras.optimizers.Adam()
 
@@ -99,7 +105,7 @@ model.compile(optimizer=optimizer,loss='MAE',metrics=['MSE'])
 
 history = model.fit(X_train,y_train,
     validation_data = (X_val,y_val),
-    batch_size=1,epochs=epochs,
+    batch_size=64,epochs=epochs,
     callbacks=[save_checkpoints,earlystop,lr_scheduler],
     verbose=1)
 
@@ -120,7 +126,7 @@ cor_xy = cor_matrix[0,1]
 r_squared = round(cor_xy**2,4)
 print(r_squared)
 
-model.save('compiled_models/' + str(r_squared)[2:])
+model.save('compiled_models/' + str(r_squared)[2:] + this_tissue + dataset )
 
 plt.scatter(y_norm,predicted,color = 'r',alpha=0.5)
 plt.plot(np.linspace(np.min(y_norm), np.max(y_norm)),np.linspace(np.min(y_norm), np.max(y_norm)))
