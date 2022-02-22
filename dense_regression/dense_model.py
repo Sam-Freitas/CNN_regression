@@ -26,9 +26,6 @@ def fully_connected_dense_model(num_features = 2048, use_dropout = False):
     d = Dense(2048)(d)
     d = Activation('gelu')(d)
     d = Dropout(0.8)(d, training = use_dropout)
-    d = Dense(128)(d)
-    d = Activation('gelu')(d)
-    d = Dropout(0.8)(d, training = use_dropout)
 
     inputs_metadata = Input(shape = (2,)) # sex, tissue type
 
@@ -63,3 +60,12 @@ def fully_connected_dense_model_old(num_features = 2048, use_dropout = False):
     model = Model(inputs=[inputs_data], outputs=[output])
 
     return model
+
+def plot_model(model):
+    try:
+        tf.keras.utils.plot_model(
+            model, to_file='dense_regression/model.png', show_shapes=True, show_dtype=True,
+            show_layer_names=True, rankdir='TB', expand_nested=True, dpi=96)
+    except:
+        print("Exporting model to png failed")
+        print("Necessary packages: pydot (pip) and graphviz (brew)")

@@ -8,7 +8,7 @@ import tensorflow as tf
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler, LabelEncoder
-from dense_model import fully_connected_dense_model
+from dense_model import fully_connected_dense_model, plot_model
 import json
 from scipy import stats
 from numpy.polynomial import Polynomial
@@ -97,7 +97,7 @@ X_meta_norm = np.zeros(shape=X_meta_raw.shape)
 for count,this_feature in enumerate(X_meta_raw.transpose()):
     X_meta_norm[:,count] = le.fit_transform(this_feature)
 
-X_norm,X_test,y_norm,y_test = train_test_split(X_norm,y_norm,test_size = 0.1,random_state = 50)
+# X_norm,X_test,y_norm,y_test = train_test_split(X_norm,y_norm,test_size = 0.1,random_state = 50)
 
 val_idx = []
 for unique_num in np.unique(y_norm): #[0::2]:
@@ -119,8 +119,9 @@ y_val = y_norm[val_idx]
 
 print('Setting up model')
 model = fully_connected_dense_model(num_features = num, use_dropout=True)
+plot_model(model)
 
-epochs = 100000
+epochs = 100
 
 save_checkpoints = tf.keras.callbacks.ModelCheckpoint(
     filepath = 'dense_regression/model_weights/cp.ckpt', monitor = 'val_loss',
@@ -150,8 +151,8 @@ lr_scheduler = tf.keras.callbacks.LearningRateScheduler(scheduler)
 
 model.summary()
 
-history = model.fit(X_train,y_train,
-    validation_data = (X_val,y_val),
+history = model.fit([X_train,X_meta_train],y_train,
+    validation_data = ([X_val,X_meta_val],y_val),
     batch_size=32,epochs=epochs,
     callbacks=[save_checkpoints,earlystop,lr_scheduler],
     verbose=1)
@@ -163,12 +164,12 @@ model.load_weights('dense_regression/model_weights/cp.ckpt')
 optimizer = tf.keras.optimizers.Adam(learning_rate = 0.0001)
 model.compile(optimizer=optimizer,loss='MAE',metrics=['MSE'])
 
-eval_result = model.evaluate(X_test,y_test,batch_size=1,verbose=1,return_dict=True)
+eval_result = model.evaluate([X_norm,X_meta_norm],y_norm,batch_size=1,verbose=1,return_dict=True)
 print(eval_result)
 
 plt.figure(1)
 
-predicted = model.predict(X_norm,batch_size=1).squeeze()
+predicted = model.predict([X_norm,X_meta_norm],batch_size=1).squeeze()
 
 cor_matrix = np.corrcoef(predicted.squeeze(),y_norm)
 cor_xy = cor_matrix[0,1]
