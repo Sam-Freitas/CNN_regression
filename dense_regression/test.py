@@ -1,7 +1,3 @@
-from tensorflow.keras.models import Model 
-from tensorflow.keras.layers import Input, Dropout, Lambda, Conv2D, Conv2DTranspose, MaxPooling2D, concatenate, BatchNormalization, Activation, Dense, LSTMCell
-from tensorflow.keras import backend as K
-from tensorflow.python.keras.engine import training
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
 from skimage import measure
@@ -14,6 +10,10 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler, LabelEncoder
 from scipy import stats
+from tensorflow.keras.models import Model 
+from tensorflow.keras.layers import Input, Dropout, Lambda, Conv2D, Conv2DTranspose, MaxPooling2D, concatenate, BatchNormalization, Activation, Dense, LSTMCell
+from tensorflow.keras import backend as K
+from tensorflow.python.keras.engine import training
 
 def cantor_pair(a,b):
 
@@ -21,15 +21,18 @@ def cantor_pair(a,b):
 
     return c
 
-def get_model(num_categories = 5):
+def get_model(num_categories = 5,use_dropout = False):
 
     inputs = Input(shape = (2,))
 
     sm = Dense(2048)(inputs)
     dm = Activation('gelu')(sm)
-    dm = Dropout(0.5)(dm)
+    dm = Dropout(0.8)(dm,training = use_dropout)
+    dm = Dense(64)(dm)
+    dm = Activation('gelu')(sm)
+    dm = Dropout(0.8)(dm,training = use_dropout)
 
-    output = Dense(num_categories,activation='sigmoid')(dm)
+    output = Dense(num_categories,activation='linear')(dm)
 
     model = Model(inputs=[inputs], outputs=[output])
 
@@ -72,50 +75,62 @@ def load_data():
 def train_val_split(X,y,y_encoded):
 
     val_idx = []
+    not_enough = []
     for unique_y in np.unique(y_encoded):
         indicies = np.where(y_encoded == unique_y)
-        if indicies[0].shape[0] > 5:
+        if indicies[0].shape[0] > 10:
             val_idx.extend(indicies[0][0:5])
+        else:
+            not_enough.append(unique_y)
 
     train_idx = np.delete(np.arange(y_encoded.shape[0]),val_idx)
     val_idx = np.sort(val_idx)
 
     X_train = X[train_idx,:]
     y_train = y[train_idx,:]
+    y_train_e = y_encoded[train_idx]
     X_val = X[val_idx,:]
     y_val = y[val_idx,:]
+    y_val_e = y_encoded[val_idx]
 
-    return X_train,y_train,X_val,y_val
+    return X_train, y_train, y_train_e, X_val, y_val, y_val_e
 
 X,y,y_encoded = load_data()
-X_train,y_train,X_val,y_val = train_val_split(X,y,y_encoded)
+X_train, y_train, y_train_e, X_val, y_val, y_val_e = train_val_split(X,y,y_encoded)
 
-model = get_model(num_categories = y.shape[1])
+model = get_model(num_categories = 1, use_dropout=True)
 model.summary()
 
-epochs = 250
+epochs = 25
 
 earlystop = tf.keras.callbacks.EarlyStopping(
-    monitor='val_accuracy', min_delta=0, patience=epochs, verbose=1,
-    mode='auto', baseline=None, restore_best_weights=True
-)
+    monitor='val_loss', min_delta=0.00001, patience=500, verbose=1, restore_best_weights=True)
+save_checkpoints = tf.keras.callbacks.ModelCheckpoint(
+    filepath = 'dense_regression/test_weights/cp.ckpt', monitor = 'val_loss',
+    mode = 'min',save_best_only = True,save_weights_only = True, verbose = 1)
 
-optimizer = tf.keras.optimizers.Adam()
-loss = tf.keras.losses.CategoricalCrossentropy()
+optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
+loss = tf.keras.losses.MeanAbsoluteError()
 model.compile(optimizer=optimizer,loss = loss, metrics=['accuracy'])
 
 history = model.fit(
     x = X_train,
-    y = y_train,
-    validation_data = (X_val,y_val),
+    y = y_train_e,
+    validation_data = (X_val,y_val_e),
     epochs = epochs,
     verbose = 1,
-    callbacks=[earlystop]
+    callbacks=[earlystop,save_checkpoints]
 )
 
-pred = np.argmax(model.predict(X),axis = -1)
+del model
+
+model = get_model(num_categories = 1, use_dropout=False)
+model.load_weights('dense_regression/test_weights/cp.ckpt')
+
+pred = model.predict(X)
 
 plt.scatter(y_encoded,pred,color = 'r',alpha = 0.2)
 plt.plot(np.linspace(np.min(y_encoded),np.max(y_encoded)),np.linspace(np.min(y_encoded),np.max(y_encoded)))
+plt.show()
 
 print('eof')

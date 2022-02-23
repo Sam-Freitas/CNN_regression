@@ -26,23 +26,30 @@ def fully_connected_dense_model(num_features = 2048, use_dropout = False):
     d = Dense(2048)(d)
     d = Activation('gelu')(d)
     d = Dropout(0.8)(d, training = use_dropout)
-    d = Dense(4)(d)
-    d = Activation('gelu')(d)
-    d = Dropout(0.25)(d, training = use_dropout)
+
+    output = Dense(1,activation='linear')(d)
 
     inputs_metadata = Input(shape = (2,)) # sex, tissue type
 
-    sm = Dense(2)(inputs_metadata)
+    sm = Dense(2048)(inputs)
     dm = Activation('gelu')(sm)
-    dm = Dropout(0.5)(dm)
+    dm = Dropout(0.8)(dm,training = use_dropout)
+    dm = Dense(64)(dm)
+    dm = Activation('gelu')(sm)
+    dm = Dropout(0.8)(dm,training = use_dropout)
+
+    dm_o = Dense(num_categories,activation='linear')(dm)
 
     cat_layer = tf.keras.layers.Concatenate()([d,dm])
 
-    # out_cat = Dense(256)(cat_layer)
-    # out_cat = Activation('gelu')(out_cat)
-    # out_cat = Dropout(0.5)(out_cat)
+    out_cat = Dense(2048)(cat_layer)
+    out_cat = Activation('gelu')(out_cat)
+    out_cat = Dropout(0.5)(out_cat)
+    out_cat = Dense(64)(out_cat)
+    out_cat = Activation('gelu')(out_cat)
+    out_cat = Dropout(0.5)(out_cat)
 
-    output = Dense(1,activation='linear')(cat_layer)
+    output = Dense(1,activation='linear')(out_cat)
 
     model = Model(inputs=[inputs_data,inputs_metadata], outputs=[output])
 

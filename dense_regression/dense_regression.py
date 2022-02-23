@@ -129,14 +129,15 @@ save_checkpoints = tf.keras.callbacks.ModelCheckpoint(
 redule_lr = tf.keras.callbacks.ReduceLROnPlateau(
     monitor = 'val_loss', factor = 0.1, patience = 250, min_lr = 0.0000001, verbose = 1)
 earlystop = tf.keras.callbacks.EarlyStopping(
-    monitor = 'val_loss',min_delta = 0.01,patience = 3000, verbose = 1)
+    monitor = 'val_loss',min_delta = 0.01,patience = 100, verbose = 1)
 # optimizer = tf.keras.optimizers.RMSprop(momentum=0.75)#, momentum=0.9)
-optimizer = tf.keras.optimizers.Adam(learning_rate = 0.1)
-model.compile(optimizer=optimizer,loss='MAE',metrics=['MSE'])
+optimizer = tf.keras.optimizers.Adam(learning_rate = 0.001)
+loss = tf.keras.losses.MeanAbsoluteError()
+model.compile(optimizer=optimizer,loss=loss,metrics=['MSE'])
 
 def scheduler(epoch, lr):
 
-    if (epoch % 25 == 0) and epoch > 0:
+    if (epoch % 100 == 0) and epoch > 0:
         lr = lr/2
         print(round(lr,10))
     return lr
@@ -175,7 +176,7 @@ for key in eval_result: res[key] = round(eval_result[key],6)
 
 model.save('dense_regression/compiled_models/' + str(r_squared)[2:] + this_tissue + '_' + str(num))
 
-plt.scatter(y_norm,predicted,color = 'r',alpha=0.5)
+plt.scatter(y_norm,predicted,color = 'r',alpha=0.2)
 plt.plot(np.linspace(np.min(y_norm), np.max(y_norm)),np.linspace(np.min(y_norm), np.max(y_norm)))
 plt.text(np.min(y_norm),np.max(y_norm),"r^2: " + str(r_squared),fontsize = 12)
 plt.title(json.dumps(res))
