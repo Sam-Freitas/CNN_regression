@@ -15,7 +15,7 @@ from numpy.polynomial import Polynomial
 from sklearn.model_selection import train_test_split
 
 # set up variables 
-num = 900
+num = 10000
 
 def idx_by_spearman_coef(data,metadata): # return the sorted calues by the smallest p values accorind to the spearman coefficient
 
@@ -32,8 +32,8 @@ def idx_by_spearman_coef(data,metadata): # return the sorted calues by the small
         # # plt.plot(x,px)
         # # print(c[1][0])
         # # if c[1][0].squeeze() > 0 and np.median(these_points) > 10:
-        output[this_gene] = [sprmn_coef.correlation,sprmn_coef.pvalue,kendalltau.correlation,kendalltau.pvalue]
-    df = pd.DataFrame.from_dict(output,orient = 'index', columns = ['Spearman_coef','Sp-value','kendalltau','Kp-value'])
+        output[this_gene] = [sprmn_coef.correlation,sprmn_coef.pvalue,kendalltau.correlation,kendalltau.pvalue,count]
+    df = pd.DataFrame.from_dict(output,orient = 'index', columns = ['Spearman_coef','Sp-value','kendalltau','Kp-value','row'])
     df = df.sort_values(['Sp-value'], ascending = True)
     sorted_gene_order = list(df.index)
     idx = np.zeros(shape = (1,len(sorted_gene_order))).squeeze()
@@ -49,7 +49,7 @@ metadata = pd.read_csv('dense_regression/meta_filtered.csv',header=0, index_col=
 
 print('parsing data')
 # this_tissue = 'Blood;PBMC'
-this_tissue = 'Adipose;'
+this_tissue = 'All_tissues'
 healthy_index = metadata['Healthy'].values == True
 tissue_index = metadata['Tissue'].values == this_tissue
 
@@ -121,7 +121,7 @@ print('Setting up model')
 model = fully_connected_dense_model(num_features = num, use_dropout=True)
 plot_model(model)
 
-epochs = 100
+epochs = 10000
 
 save_checkpoints = tf.keras.callbacks.ModelCheckpoint(
     filepath = 'dense_regression/model_weights/cp.ckpt', monitor = 'val_loss',
@@ -131,20 +131,14 @@ redule_lr = tf.keras.callbacks.ReduceLROnPlateau(
 earlystop = tf.keras.callbacks.EarlyStopping(
     monitor = 'val_loss',min_delta = 0.01,patience = 3000, verbose = 1)
 # optimizer = tf.keras.optimizers.RMSprop(momentum=0.75)#, momentum=0.9)
-optimizer = tf.keras.optimizers.Adam(learning_rate = 0.0001)
+optimizer = tf.keras.optimizers.Adam(learning_rate = 0.1)
 model.compile(optimizer=optimizer,loss='MAE',metrics=['MSE'])
 
 def scheduler(epoch, lr):
 
-    if (epoch % 1000 == 0) and epoch > 0:
+    if (epoch % 25 == 0) and epoch > 0:
         lr = lr/2
-
-    # if epoch < 100:
-    #     lr = 0.0001
-    # elif epoch > 99 and epoch < 250:
-    #     lr = 0.00005
-    # else:
-    #     lr = 0.00001
+        print(round(lr,10))
     return lr
 
 lr_scheduler = tf.keras.callbacks.LearningRateScheduler(scheduler)
@@ -198,7 +192,7 @@ for this_key in list(history.history.keys()):
     plt.plot(b,label = this_key)
 
 plt.legend(loc="upper left")
-plt.ylim([0,15])
+plt.ylim([0,50])
 plt.title(json.dumps(res))
 plt.savefig(fname=  "dense_regression/training_history" + str(this_tissue).replace('/','-') + ".png")
 

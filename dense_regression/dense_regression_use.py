@@ -13,7 +13,7 @@ from scipy import stats
 from dense_model import fully_connected_dense_model
 
 # set up variables 
-num = 1024
+num = 900
 
 def idx_by_spearman_coef(data,metadata): # return the sorted calues by the smallest p values accorind to the spearman coefficient
 
@@ -86,7 +86,7 @@ model.compile(optimizer=optimizer,loss='MAE',metrics=['MSE'])
 
 model.summary()
 
-model.load_weights('dense_regression/model_weights_test/cp.ckpt')
+model.load_weights('dense_regression/model_weights/cp.ckpt')
 
 eval_result = model.evaluate(X_norm,y_norm,batch_size=1,verbose=1,return_dict=True)
 

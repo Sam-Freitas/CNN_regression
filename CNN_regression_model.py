@@ -144,11 +144,18 @@ def fully_connected_CNN_v2(use_dropout = False, height = 128, width = 128, chann
 
     pool_1 = MaxPooling2D((2,2))(conv_1)
 
-    to_dense = tf.keras.layers.Concatenate()([pool_1,pool_2,pool_3])
+    cat_layer = tf.keras.layers.Concatenate()([pool_1,pool_2,pool_3])
 
-    flattened = tf.keras.layers.Flatten()(to_dense)
-    
-    d = Dense(2048,activation='gelu')(flattened)
+    # conv_final = Conv2D(256, (1,1), activation = None, kernel_initializer = 'he_normal', padding = 'same')(cat_layer)
+    # conv_final = Activation('relu')(conv_final)
+
+    # flattened = tf.keras.layers.Flatten()(conv_final)
+
+    flattened = tf.keras.layers.Flatten()(cat_layer)
+    d = Dense(900, activation='gelu')(flattened)
+    d = Activation('gelu')(d)
+    d = Dropout(0.8)(d, training = use_dropout)
+    d = Dense(2048,activation='gelu')(d)
     d = Activation('gelu')(d)
     d = Dropout(0.8)(d, training = use_dropout)
 

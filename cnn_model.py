@@ -16,12 +16,12 @@ from sklearn.preprocessing import PowerTransformer
 
 print('reading in metadata')
 
-this_tissue = 'Blood;PBMC'
-# this_tissue = 'Adipose;'
+# this_tissue = 'Blood;PBMC'
+this_tissue = 'Adipose;'
 
 dataset = '_1_900'
 
-data_path = '/groups/sutphin/NN_trainings/IGTD/Results/' + this_tissue + dataset +'/data'
+data_path = '/groups/sutphin/NN_trainings/IGTD/Results/' + this_tissue + dataset + '/data'
 metadata_path = '/home/u23/samfreitas/NN_trainings/CNN_regression/dense_regression/meta_filtered.csv'
 imgs_list = natsorted(glob.glob(os.path.join(data_path,'*.txt')))
 metadata = pd.read_csv(metadata_path)
@@ -79,7 +79,7 @@ model = fully_connected_CNN_v2(height=X.shape[1],width=X.shape[2],use_dropout=Tr
 # model = ResNet50v2_regression(height=X.shape[1],width=X.shape[2],use_dropout=False)
 plot_model(model)
 
-epochs = 3500
+epochs = 10000
 
 save_checkpoints = tf.keras.callbacks.ModelCheckpoint(
     filepath = 'model_weights/cp.ckpt', monitor = 'val_loss',
@@ -87,25 +87,30 @@ save_checkpoints = tf.keras.callbacks.ModelCheckpoint(
 redule_lr = tf.keras.callbacks.ReduceLROnPlateau(
     monitor = 'val_loss', factor = 0.1, patience = 250, min_lr = 0.0000001, verbose = 1)
 earlystop = tf.keras.callbacks.EarlyStopping(
-    monitor = 'val_loss',min_delta = 0.01,patience = epochs, verbose = 1)
+    monitor = 'val_loss',min_delta = 0.01,patience = 3000, verbose = 1)
 # optimizer = tf.keras.optimizers.RMSprop(momentum=0.75)#, momentum=0.9)
-optimizer = tf.keras.optimizers.Adam()
+optimizer = tf.keras.optimizers.Adam(learning_rate = 0.0001)
+model.compile(optimizer=optimizer,loss='MAE',metrics=['MSE'])
 
 def scheduler(epoch, lr):
-    if epoch < 50:
-        lr = 0.0001
-    elif epoch > 49 and epoch < 100:
-        lr = 0.00005
-    else:
-        lr = 0.00001
+
+    if (epoch % 1000 == 0) and epoch > 0:
+        lr = lr/2
+
+    # if epoch < 100:
+    #     lr = 0.0001
+    # elif epoch > 99 and epoch < 250:
+    #     lr = 0.00005
+    # else:
+    #     lr = 0.00001
     return lr
 lr_scheduler = tf.keras.callbacks.LearningRateScheduler(scheduler)
 
-model.compile(optimizer=optimizer,loss='MAE',metrics=['MSE'])
+
 
 history = model.fit(X_train,y_train,
     validation_data = (X_val,y_val),
-    batch_size=64,epochs=epochs,
+    batch_size=32,epochs=epochs,
     callbacks=[save_checkpoints,earlystop,lr_scheduler],
     verbose=1)
 
