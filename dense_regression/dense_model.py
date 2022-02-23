@@ -31,14 +31,14 @@ def fully_connected_dense_model(num_features = 2048, use_dropout = False):
 
     inputs_metadata = Input(shape = (2,)) # sex, tissue type
 
-    sm = Dense(2048)(inputs)
+    sm = Dense(2048)(inputs_metadata)
     dm = Activation('gelu')(sm)
     dm = Dropout(0.8)(dm,training = use_dropout)
     dm = Dense(64)(dm)
     dm = Activation('gelu')(sm)
     dm = Dropout(0.8)(dm,training = use_dropout)
 
-    dm_o = Dense(num_categories,activation='linear')(dm)
+    dm_o = Dense(1,activation='linear')(dm)
 
     cat_layer = tf.keras.layers.Concatenate()([d,dm])
 
