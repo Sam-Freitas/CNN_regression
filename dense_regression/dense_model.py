@@ -28,7 +28,7 @@ def fully_connected_dense_model(num_features = 2048, use_dropout = False, dropou
     d = Activation('gelu')(d)
     d = Dropout(dropout_amount)(d, training = use_dropout)
 
-    d_output = Dense(2,activation='linear')(d)
+    d_output = Dense(4,activation='linear')(d)
 
     inputs_metadata = Input(shape = (2,)) # sex, tissue type
 
@@ -39,7 +39,7 @@ def fully_connected_dense_model(num_features = 2048, use_dropout = False, dropou
     dm = Activation('gelu')(sm)
     dm = Dropout(dropout_amount)(dm,training = use_dropout)
 
-    dm_output = Dense(1,activation='linear')(dm)
+    dm_output = Dense(4,activation='linear')(dm)
 
     cat_layer = tf.keras.layers.Concatenate()([d_output,dm_output])
 
