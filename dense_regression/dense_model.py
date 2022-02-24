@@ -12,42 +12,42 @@ import numpy as np
 import shutil
 import random
 import glob
+import json
 import sys
 import cv2
 import os
 
-def fully_connected_dense_model(num_features = 2048, use_dropout = False):
+def fully_connected_dense_model(num_features = 2048, use_dropout = False, dropout_amount = 0.8):
 
     inputs_data = Input(shape = (num_features,))
 
     s = Dense(num_features)(inputs_data)
     d = Activation('gelu')(s)
-    d = Dropout(0.8)(d, training = use_dropout)
+    d = Dropout(dropout_amount)(d, training = use_dropout)
     d = Dense(2048)(d)
     d = Activation('gelu')(d)
-    d = Dropout(0.8)(d, training = use_dropout)
+    d = Dropout(dropout_amount)(d, training = use_dropout)
 
-    output = Dense(1,activation='linear')(d)
+    d_output = Dense(2,activation='linear')(d)
 
     inputs_metadata = Input(shape = (2,)) # sex, tissue type
 
     sm = Dense(2048)(inputs_metadata)
     dm = Activation('gelu')(sm)
-    dm = Dropout(0.8)(dm,training = use_dropout)
+    dm = Dropout(dropout_amount)(dm,training = use_dropout)
     dm = Dense(64)(dm)
     dm = Activation('gelu')(sm)
-    dm = Dropout(0.8)(dm,training = use_dropout)
+    dm = Dropout(dropout_amount)(dm,training = use_dropout)
 
-    dm_o = Dense(1,activation='linear')(dm)
+    dm_output = Dense(1,activation='linear')(dm)
 
-    cat_layer = tf.keras.layers.Concatenate()([d,dm])
+    cat_layer = tf.keras.layers.Concatenate()([d_output,dm_output])
 
     out_cat = Dense(2048)(cat_layer)
     out_cat = Activation('gelu')(out_cat)
-    out_cat = Dropout(0.5)(out_cat)
+    out_cat = Dropout(dropout_amount)(out_cat)
     out_cat = Dense(64)(out_cat)
     out_cat = Activation('gelu')(out_cat)
-    out_cat = Dropout(0.5)(out_cat)
 
     output = Dense(1,activation='linear')(out_cat)
 
@@ -80,3 +80,55 @@ def plot_model(model):
     except:
         print("Exporting model to png failed")
         print("Necessary packages: pydot (pip) and graphviz (brew)")
+
+
+class test_on_improved_val_loss(tf.keras.callbacks.Callback):
+    def on_epoch_end(self, epoch, logs=None):
+
+        curr_path = os.path.split(__file__)[0]
+
+        curr_val_loss = logs['val_loss']
+        try:
+            val_loss_hist = self.model.history.history['val_loss']
+        except:
+            val_loss_hist = curr_val_loss + 1
+
+        if epoch == 0:
+            try:
+                os.mkdir(os.path.join(curr_path, 'output_images_testing_during'))
+            except:
+                shutil.rmtree(os.path.join(curr_path, 'output_images_testing_during'))
+                os.mkdir(os.path.join(curr_path, 'output_images_testing_during'))
+
+        if curr_val_loss <= np.min(val_loss_hist) or epoch == 0:
+
+            temp = np.load(os.path.join(curr_path,'data_arrays','test.npz'))
+            X_test,X_meta_test,y_test = temp['X'],temp['X_meta'],temp['y']
+
+            eval_result = self.model.evaluate([X_test,X_meta_test],y_test,batch_size=1,verbose=0,return_dict=True)
+            print(eval_result)
+
+            plt.figure(1)
+
+            predicted = self.model.predict([X_test,X_meta_test],batch_size=1).squeeze()
+
+            cor_matrix = np.corrcoef(predicted.squeeze(),y_test)
+            cor_xy = cor_matrix[0,1]
+            r_squared = round(cor_xy**2,4)
+            print("Current r_squared test:",r_squared)
+
+            res = dict()
+            for key in eval_result: res[key] = round(eval_result[key],6)
+
+            plt.scatter(y_test,predicted,color = 'r',alpha=0.2)
+            plt.plot(np.linspace(np.min(y_test), np.max(y_test)),np.linspace(np.min(y_test), np.max(y_test)))
+            plt.text(np.min(y_test),np.max(y_test),"r^2: " + str(r_squared),fontsize = 12)
+            plt.title(json.dumps(res))
+            plt.xlabel('Expected Age (years)')
+            plt.ylabel('Predicted Age (years)')
+
+            output_name = os.path.join(curr_path,'output_images_testing_during',str(epoch) + '_' + str(r_squared)[2:] + '.png')
+
+            plt.savefig(fname = output_name)
+
+            plt.close('all')
