@@ -15,7 +15,7 @@ from numpy.polynomial import Polynomial
 from sklearn.model_selection import train_test_split
 import random
 
-num = 10000
+num = 1000
 
 def idx_by_spearman_coef(data,metadata): # return the sorted calues by the smallest p values accorind to the spearman coefficient
 
@@ -44,16 +44,21 @@ def idx_by_spearman_coef(data,metadata): # return the sorted calues by the small
     return idx,df
 
 print('loading in data')
-data = pd.read_csv('dense_regression/raw_filtered_rotated.csv',header=0, index_col=0)
+data = pd.read_csv('dense_regression/normalized_batch_corrected_training_data_rot.csv',header=0, index_col=0)
 metadata = pd.read_csv('dense_regression/meta_filtered.csv',header=0, index_col=0)
+
+# sort data 
+metadata = metadata.sort_values(by = ['SRR.ID'], ascending = True)
+data = data.sort_index(axis = 0, ascending = True)
 
 print('parsing data')
 # this_tissue = 'Blood;PBMC'
 this_tissue = 'All_tissues'
 healthy_index = metadata['Healthy'].values == True
 tissue_index = metadata['Tissue'].values == this_tissue
+age_index = metadata['Age'].values > 14
 
-single_tissue_index = healthy_index#*tissue_index
+single_tissue_index = healthy_index*age_index#*tissue_index
 data = data.iloc[single_tissue_index,:]
 metadata_healthy = metadata.iloc[single_tissue_index,:]
 
@@ -71,16 +76,17 @@ print('Current tissue',this_tissue)
 X = []
 y = []
 X_meta = []
+# fix this
 for count in tqdm(range(data.shape[0])):
 
-    this_data = data.iloc[count] # get single data
+    this_data = data.iloc[count,:] # get single data
     srr_id = this_data.name # get name
     this_imgs_meta_idx = (SRR_values == srr_id) # find metadata
     this_metadata = metadata_healthy.iloc[this_imgs_meta_idx,:] # get metadata
     # if (this_metadata['Tissue'].values == this_tissue).squeeze(): # if specific argument 
     #     y.append(metadata_healthy.iloc[this_imgs_meta_idx,:]['Age'].values.squeeze()) 
     #     X.append(this_data.values)
-    y.append(this_metadata['Age'].values.squeeze())
+    y.append(this_metadata['Age'].values[0])
     X_meta.append([str(this_metadata['Gender'].values.squeeze()),str(this_metadata['Tissue'].values.squeeze())])
     X.append(this_data.values)
 
@@ -100,11 +106,15 @@ for count,this_feature in enumerate(X_meta_raw.transpose()):
 # X_norm,X_test,y_norm,y_test = train_test_split(X_norm,y_norm,test_size = 0.1,random_state = 50)
 
 val_idx = []
+not_enough_data_idx = []
 for unique_num in np.unique(y_norm): #[0::2]:
     indices = np.where(y_norm==unique_num)
-    if indices[0].shape[0] > 2:
-        val_idx.extend(np.where(y_norm==unique_num)[0][0:2])
+    if indices[0].shape[0] > 10:
+        val_idx.extend(np.where(y_norm==unique_num)[0][0:5])
+    else:
+        not_enough_data_idx.append(unique_num)
 val_idx = np.asarray(val_idx)
+not_enough_data_values = np.asarray(not_enough_data_idx)
 
 train_idx = np.arange(y_norm.shape[0])
 train_idx = np.delete(train_idx,val_idx)

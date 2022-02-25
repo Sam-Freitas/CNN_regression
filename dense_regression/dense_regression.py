@@ -18,12 +18,11 @@ import random
 # set up variables 
 
 def scheduler(epoch, lr):
-    if (epoch % 200 == 0) and epoch > 0:
+    if (epoch % 20 == 0) and epoch > 0:
         lr = lr*.9
         print(round(lr,10))
     return lr
 
-num = 10000
 this_tissue = 'All_tissues'
 
 temp = np.load('dense_regression/data_arrays/train.npz')
@@ -32,6 +31,10 @@ temp = np.load('dense_regression/data_arrays/val.npz')
 X_val,X_meta_val,y_val = temp['X'],temp['X_meta'],temp['y']
 temp = np.load('dense_regression/data_arrays/test.npz')
 X_test,X_meta_test,y_test = temp['X'],temp['X_meta'],temp['y']
+
+del temp
+
+num = X_train.shape[1]
 
 X_all = np.concatenate((X_train,X_val,X_test))
 X_meta_all = np.concatenate((X_meta_train,X_meta_val,X_meta_test))
@@ -43,7 +46,7 @@ print('Setting up model')
 model = fully_connected_dense_model(num_features = num, use_dropout=True,dropout_amount = 0.25)
 plot_model(model)
 
-epochs = 100000
+epochs = 10000
 
 save_checkpoints = tf.keras.callbacks.ModelCheckpoint(
     filepath = 'dense_regression/model_weights/cp.ckpt', monitor = 'val_loss',
@@ -51,7 +54,7 @@ save_checkpoints = tf.keras.callbacks.ModelCheckpoint(
 redule_lr = tf.keras.callbacks.ReduceLROnPlateau(
     monitor = 'val_loss', factor = 0.9, patience = 100, min_lr = 0, verbose = 1)
 earlystop = tf.keras.callbacks.EarlyStopping(
-    monitor = 'val_loss',min_delta = 0.01,patience = 5000, verbose = 1)
+    monitor = 'val_loss',min_delta = 0.01,patience = 500, verbose = 1)
 on_epoch_end = test_on_improved_val_loss()
 lr_scheduler = tf.keras.callbacks.LearningRateScheduler(scheduler)
 
