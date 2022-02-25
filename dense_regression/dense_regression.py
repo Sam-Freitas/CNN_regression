@@ -36,14 +36,14 @@ del temp
 
 num = X_train.shape[1]
 
-X_all = np.concatenate((X_train,X_val,X_test))
-X_meta_all = np.concatenate((X_meta_train,X_meta_val,X_meta_test))
-y_all = np.concatenate((y_train,y_val,y_test))
+X_all = np.concatenate((X_train,X_val))
+X_meta_all = np.concatenate((X_meta_train,X_meta_val))
+y_all = np.concatenate((y_train,y_val))
 
 # del data, metadata, metadata_healthy, single_tissue_index, sorted_std_idx_ascend, SRR_values, this_metadata, this_imgs_meta_idx, srr_id, this_data
 
 print('Setting up model')
-model = fully_connected_dense_model(num_features = num, use_dropout=True,dropout_amount = 0.25)
+model = fully_connected_dense_model(num_features = num, use_dropout=True,dropout_amount = 0.5)
 plot_model(model)
 
 epochs = 10000
@@ -52,14 +52,14 @@ save_checkpoints = tf.keras.callbacks.ModelCheckpoint(
     filepath = 'dense_regression/model_weights/cp.ckpt', monitor = 'val_loss',
     mode = 'min',save_best_only = True,save_weights_only = True, verbose = 1)
 redule_lr = tf.keras.callbacks.ReduceLROnPlateau(
-    monitor = 'val_loss', factor = 0.9, patience = 100, min_lr = 0, verbose = 1)
+    monitor = 'val_loss', factor = 0.5, patience = 15, min_lr = 0, verbose = 1)
 earlystop = tf.keras.callbacks.EarlyStopping(
     monitor = 'val_loss',min_delta = 0.01,patience = 500, verbose = 1)
 on_epoch_end = test_on_improved_val_loss()
 lr_scheduler = tf.keras.callbacks.LearningRateScheduler(scheduler)
 
 # optimizer = tf.keras.optimizers.RMSprop(momentum=0.75)#, momentum=0.9)
-optimizer = tf.keras.optimizers.Adam(learning_rate = 0.001)
+optimizer = tf.keras.optimizers.Adam(learning_rate = 0.0001)
 loss = tf.keras.losses.MeanAbsoluteError()
 
 model.compile(optimizer=optimizer,loss=loss,metrics=['MSE'])
@@ -82,54 +82,39 @@ model.compile(optimizer=optimizer,loss='MAE',metrics=['MSE'])
 eval_result = model.evaluate([X_test,X_meta_test],y_test,batch_size=1,verbose=1,return_dict=True)
 print(eval_result)
 
-plt.figure(1)
-
-predicted = model.predict([X_test,X_meta_test],batch_size=1).squeeze()
-
-cor_matrix = np.corrcoef(predicted.squeeze(),y_test)
-cor_xy = cor_matrix[0,1]
-r_squared = round(cor_xy**2,4)
-print("test",r_squared)
-
 res = dict()
 for key in eval_result: res[key] = round(eval_result[key],6)
 
-model.save('dense_regression/compiled_models/' + str(r_squared)[2:] + this_tissue + '_' + str(num))
+plt.figure(1)
 
-plt.scatter(y_test,predicted,color = 'r',alpha=0.2)
-plt.plot(np.linspace(np.min(y_test), np.max(y_test)),np.linspace(np.min(y_test), np.max(y_test)))
-plt.text(np.min(y_test),np.max(y_test),"r^2: " + str(r_squared),fontsize = 12)
+predicted_test = model.predict([X_test,X_meta_test],batch_size=1).squeeze()
+predicted_train = model.predict([X_all,X_meta_all],batch_size=1).squeeze()
+
+cor_matrix = np.corrcoef(predicted_test.squeeze(),y_test)
+cor_xy = cor_matrix[0,1]
+r_squared_test = round(cor_xy**2,4)
+print("test",r_squared_test)
+
+cor_matrix = np.corrcoef(predicted_train.squeeze(),y_all)
+cor_xy = cor_matrix[0,1]
+r_squared_train = round(cor_xy**2,4)
+print("train",r_squared_train)
+
+model.save('dense_regression/compiled_models/' + str(r_squared_test)[2:] + this_tissue + '_' + str(num))
+
+plt.scatter(y_all,predicted_train,color = 'r',alpha=0.2, label = 'training data')
+plt.scatter(y_test,predicted_test,color = 'b',alpha=0.3, label = 'testing data')
+plt.plot(np.linspace(np.min(y_all), np.max(y_all)),np.linspace(np.min(y_all), np.max(y_all)))
+
+plt.text(np.min(y_all),np.max(y_all),"r^2: " + str(r_squared_train),fontsize = 12, color = 'r')
+plt.text(np.min(y_all),np.max(y_all)-5,"r^2: " + str(r_squared_test),fontsize = 12, color = 'b')
+
+plt.legend(loc = 'upper center')
 plt.title(json.dumps(res))
 plt.xlabel('Expected Age (years)')
 plt.ylabel('Predicted Age (years)')
 
 plt.savefig(fname = "dense_regression/test_model_predictions" + str(this_tissue).replace('/','-') + ".png")
-
-plt.close('all')
-
-eval_result = model.evaluate([X_all,X_meta_all],y_all,batch_size=1,verbose=1,return_dict=True)
-print(eval_result)
-
-plt.figure(2)
-
-predicted = model.predict([X_all,X_meta_all],batch_size=1).squeeze()
-
-cor_matrix = np.corrcoef(predicted.squeeze(),y_all)
-cor_xy = cor_matrix[0,1]
-r_squared = round(cor_xy**2,4)
-print("train",r_squared)
-
-res = dict()
-for key in eval_result: res[key] = round(eval_result[key],6)
-
-plt.scatter(y_all,predicted,color = 'r',alpha=0.2)
-plt.plot(np.linspace(np.min(y_all), np.max(y_all)),np.linspace(np.min(y_all), np.max(y_all)))
-plt.text(np.min(y_all),np.max(y_all),"r^2: " + str(r_squared),fontsize = 12)
-plt.title(json.dumps(res))
-plt.xlabel('Expected Age (years)')
-plt.ylabel('Predicted Age (years)')
-
-plt.savefig(fname = "dense_regression/train_model_predictions" + str(this_tissue).replace('/','-') + ".png")
 
 plt.close('all')
 

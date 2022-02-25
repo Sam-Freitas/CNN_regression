@@ -7,7 +7,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 import tensorflow as tf
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import MinMaxScaler, LabelEncoder
+from sklearn.preprocessing import MinMaxScaler, LabelEncoder, PolynomialFeatures, PowerTransformer, QuantileTransformer
 from dense_model import fully_connected_dense_model, plot_model,test_on_improved_val_loss
 import json
 from scipy import stats
@@ -15,25 +15,21 @@ from numpy.polynomial import Polynomial
 from sklearn.model_selection import train_test_split
 import random
 
-num = 1000
+num = 8100
 
 def idx_by_spearman_coef(data,metadata): # return the sorted calues by the smallest p values accorind to the spearman coefficient
 
     ages = np.asarray(metadata['Age'].values)
     output = dict()
     inital_gene_order = list(data.columns)
-    for count,this_gene in enumerate(inital_gene_order):
+    for count in tqdm(range(len(inital_gene_order))):
+        this_gene = inital_gene_order[count]
         these_points = data[this_gene].values
         sprmn_coef = stats.spearmanr(ages,these_points)
-        kendalltau = stats.kendalltau(ages,these_points)
-        # c = Polynomial.fit(ages,these_points, deg = 1,full = True)
-        # x, px = c[0].linspace()
-        # # plt.plot(ages,these_points,'ro')
-        # # plt.plot(x,px)
-        # # print(c[1][0])
-        # # if c[1][0].squeeze() > 0 and np.median(these_points) > 10:
-        output[this_gene] = [sprmn_coef.correlation,sprmn_coef.pvalue,kendalltau.correlation,kendalltau.pvalue,count]
-    df = pd.DataFrame.from_dict(output,orient = 'index', columns = ['Spearman_coef','Sp-value','kendalltau','Kp-value','row'])
+        # kendalltau = stats.kendalltau(ages,these_points)
+
+        output[this_gene] = [sprmn_coef.correlation,sprmn_coef.pvalue,count]
+    df = pd.DataFrame.from_dict(output,orient = 'index', columns = ['Spearman_coef','Sp-value','row'])
     df = df.sort_values(['Sp-value'], ascending = True)
     sorted_gene_order = list(df.index)
     idx = np.zeros(shape = (1,len(sorted_gene_order))).squeeze()
@@ -44,7 +40,7 @@ def idx_by_spearman_coef(data,metadata): # return the sorted calues by the small
     return idx,df
 
 print('loading in data')
-data = pd.read_csv('dense_regression/normalized_batch_corrected_training_data_rot.csv',header=0, index_col=0)
+data = pd.read_csv('dense_regression/normalized_training_data_rot.csv',header=0, index_col=0)
 metadata = pd.read_csv('dense_regression/meta_filtered.csv',header=0, index_col=0)
 
 # sort data 
@@ -94,7 +90,10 @@ X_raw = np.asarray(X) # convert to array
 y_raw = np.asarray(y)
 X_meta_raw = np.asarray(X_meta)
 
-MM = MinMaxScaler()
+# PT = QuantileTransformer()
+# X_norm = PT.fit_transform(X_raw)
+
+MM = MinMaxScaler(feature_range = (-1,1))
 X_norm = MM.fit_transform(X_raw)
 y_norm = y_raw
 
@@ -111,6 +110,9 @@ for unique_num in np.unique(y_norm): #[0::2]:
     indices = np.where(y_norm==unique_num)
     if indices[0].shape[0] > 10:
         val_idx.extend(np.where(y_norm==unique_num)[0][0:5])
+    elif indices[0].shape[0] > 1:
+        num_to_exd = round(indices[0].shape[0]/2)
+        val_idx.extend(np.where(y_norm==unique_num)[0][0:num_to_exd])
     else:
         not_enough_data_idx.append(unique_num)
 val_idx = np.asarray(val_idx)
