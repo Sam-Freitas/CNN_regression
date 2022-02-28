@@ -1,5 +1,5 @@
 from tensorflow.keras.models import Model 
-from tensorflow.keras.layers import Input, Dropout, Lambda, Conv2D, Conv2DTranspose, MaxPooling2D, concatenate, BatchNormalization, Activation, Dense, LSTMCell
+from tensorflow.keras.layers import Input, Dropout, Lambda, Conv1D, Conv2D, Conv2DTranspose, MaxPooling2D, concatenate, BatchNormalization, Activation, Dense, LSTMCell
 from tensorflow.keras import backend as K
 from tensorflow.python.keras.engine import training
 from skimage import measure
@@ -28,7 +28,7 @@ def fully_connected_dense_model(num_features = 2048, use_dropout = False, dropou
     d = Activation('gelu')(d)
     d = Dropout(dropout_amount)(d, training = use_dropout)
 
-    d_output = Dense(4,activation='relu')(d)
+    d_output = Dense(4,activation='linear')(d)
 
     inputs_metadata = Input(shape = (2,)) # sex, tissue type
 
@@ -39,7 +39,7 @@ def fully_connected_dense_model(num_features = 2048, use_dropout = False, dropou
     dm = Activation('gelu')(sm)
     dm = Dropout(dropout_amount)(dm,training = use_dropout)
 
-    dm_output = Dense(4,activation='relu')(dm)
+    dm_output = Dense(4,activation='linear')(dm)
 
     cat_layer = tf.keras.layers.Concatenate()([d_output,dm_output])
 
@@ -48,9 +48,8 @@ def fully_connected_dense_model(num_features = 2048, use_dropout = False, dropou
     out_cat = Dropout(dropout_amount)(out_cat)
     out_cat = Dense(64)(out_cat)
     out_cat = Activation('gelu')(out_cat)
-    # out_cat = Dropout(dropout_amount)(out_cat)
 
-    output = Dense(1,activation='relu')(out_cat)
+    output = Dense(1,activation='linear')(out_cat)
 
     model = Model(inputs=[inputs_data,inputs_metadata], outputs=[output])
 

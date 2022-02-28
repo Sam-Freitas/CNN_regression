@@ -17,12 +17,6 @@ import random
 
 # set up variables 
 
-def scheduler(epoch, lr):
-    if (epoch % 20 == 0) and epoch > 0:
-        lr = lr*.9
-        print(round(lr,10))
-    return lr
-
 this_tissue = 'All_tissues'
 
 temp = np.load('dense_regression/data_arrays/train.npz')
@@ -40,26 +34,24 @@ X_all = np.concatenate((X_train,X_val))
 X_meta_all = np.concatenate((X_meta_train,X_meta_val))
 y_all = np.concatenate((y_train,y_val))
 
-# del data, metadata, metadata_healthy, single_tissue_index, sorted_std_idx_ascend, SRR_values, this_metadata, this_imgs_meta_idx, srr_id, this_data
-
 print('Setting up model')
-model = fully_connected_dense_model(num_features = num, use_dropout=True,dropout_amount = 0.5)
+model = fully_connected_dense_model(num_features = num, use_dropout=True,dropout_amount = 0.4)
 plot_model(model)
 
 epochs = 10000
+batch_size = 32
 
 save_checkpoints = tf.keras.callbacks.ModelCheckpoint(
     filepath = 'dense_regression/model_weights/cp.ckpt', monitor = 'val_loss',
     mode = 'min',save_best_only = True,save_weights_only = True, verbose = 1)
 redule_lr = tf.keras.callbacks.ReduceLROnPlateau(
-    monitor = 'val_loss', factor = 0.5, patience = 15, min_lr = 0, verbose = 1)
+    monitor = 'val_loss', factor = 0.5, patience = 50, min_lr = 0, verbose = 1)
 earlystop = tf.keras.callbacks.EarlyStopping(
     monitor = 'val_loss',min_delta = 0.01,patience = 500, verbose = 1)
 on_epoch_end = test_on_improved_val_loss()
-lr_scheduler = tf.keras.callbacks.LearningRateScheduler(scheduler)
 
-# optimizer = tf.keras.optimizers.RMSprop(momentum=0.75)#, momentum=0.9)
-optimizer = tf.keras.optimizers.Adam(learning_rate = 0.0001)
+optimizer = tf.keras.optimizers.Adam(learning_rate=0.0001)
+optimizer = tf.keras.optimizers.RMSprop(learning_rate=0.0001)
 loss = tf.keras.losses.MeanAbsoluteError()
 
 model.compile(optimizer=optimizer,loss=loss,metrics=['MSE'])
@@ -68,7 +60,7 @@ model.summary()
 
 history = model.fit([X_train,X_meta_train],y_train,
     validation_data = ([X_val,X_meta_val],y_val),
-    batch_size=32,epochs=epochs,
+    batch_size=batch_size,epochs=epochs,
     callbacks=[save_checkpoints,earlystop,redule_lr,on_epoch_end],
     verbose=1)
 

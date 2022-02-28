@@ -7,13 +7,14 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 import tensorflow as tf
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import MinMaxScaler, LabelEncoder, PolynomialFeatures, PowerTransformer, QuantileTransformer
+from sklearn.preprocessing import MinMaxScaler, LabelEncoder, PolynomialFeatures, PowerTransformer, QuantileTransformer, StandardScaler
 from dense_model import fully_connected_dense_model, plot_model,test_on_improved_val_loss
 import json
 from scipy import stats
 from numpy.polynomial import Polynomial
 from sklearn.model_selection import train_test_split
 import random
+# from minepy.mine import MINE
 
 num = 8100
 
@@ -22,15 +23,20 @@ def idx_by_spearman_coef(data,metadata): # return the sorted calues by the small
     ages = np.asarray(metadata['Age'].values)
     output = dict()
     inital_gene_order = list(data.columns)
+    
     for count in tqdm(range(len(inital_gene_order))):
         this_gene = inital_gene_order[count]
         these_points = data[this_gene].values
         sprmn_coef = stats.spearmanr(ages,these_points)
         # kendalltau = stats.kendalltau(ages,these_points)
+        # m = MINE()
+        # m.compute_scores(ages,these_points)
+        # mic_score = m.mic()
 
         output[this_gene] = [sprmn_coef.correlation,sprmn_coef.pvalue,count]
     df = pd.DataFrame.from_dict(output,orient = 'index', columns = ['Spearman_coef','Sp-value','row'])
     df = df.sort_values(['Sp-value'], ascending = True)
+    # df = df.sort_values(['mic_score'], ascending = False)
     sorted_gene_order = list(df.index)
     idx = np.zeros(shape = (1,len(sorted_gene_order))).squeeze()
     for count,this_gene in enumerate(sorted_gene_order):
@@ -94,7 +100,9 @@ X_meta_raw = np.asarray(X_meta)
 # X_norm = PT.fit_transform(X_raw)
 
 MM = MinMaxScaler(feature_range = (-1,1))
+# MM = StandardScaler()
 X_norm = MM.fit_transform(X_raw)
+# X_norm = X_raw
 y_norm = y_raw
 
 le = LabelEncoder()
