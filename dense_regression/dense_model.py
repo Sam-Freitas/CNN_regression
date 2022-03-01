@@ -1,5 +1,5 @@
 from tensorflow.keras.models import Model 
-from tensorflow.keras.layers import Input, Dropout, Lambda, Conv1D, Conv2D, Conv2DTranspose, MaxPooling2D, concatenate, BatchNormalization, Activation, Dense, LSTMCell
+from tensorflow.keras.layers import Input, AlphaDropout, Dropout, Lambda, Conv1D, Conv2D, Conv2DTranspose, MaxPooling2D, concatenate, BatchNormalization, Activation, Dense, LSTMCell
 from tensorflow.keras import backend as K
 from tensorflow.python.keras.engine import training
 from skimage import measure
@@ -21,33 +21,38 @@ def fully_connected_dense_model(num_features = 2048, use_dropout = False, dropou
 
     inputs_data = Input(shape = (num_features,))
 
-    s = Dense(num_features)(inputs_data)
-    d = Activation('gelu')(s)
+    s = Dense(num_features+1,input_shape = inputs_data.shape)(inputs_data)
+    d = Activation('sigmoid')(s)
     d = Dropout(dropout_amount)(d, training = use_dropout)
-    d = Dense(2048)(d)
-    d = Activation('gelu')(d)
+    d = Dense(10000)(d)
+    d = Activation('elu')(d)
     d = Dropout(dropout_amount)(d, training = use_dropout)
+    # d = Dense(4)(d)
+    # d = Activation('elu')(d)
+    # d = Dropout(dropout_amount)(d, training = use_dropout)
 
-    d_output = Dense(4,activation='linear')(d)
+    d_output = Dense(1,activation='linear')(d)
+    # d_output = Dropout(dropout_amount)(d_output, training = use_dropout)
 
     inputs_metadata = Input(shape = (2,)) # sex, tissue type
 
-    sm = Dense(2048)(inputs_metadata)
-    dm = Activation('gelu')(sm)
-    dm = Dropout(dropout_amount)(dm,training = use_dropout)
-    dm = Dense(64)(dm)
-    dm = Activation('gelu')(sm)
-    dm = Dropout(dropout_amount)(dm,training = use_dropout)
+    sm = Dense(512,input_shape = inputs_metadata.shape)(inputs_metadata)
+    dm = Activation('elu')(sm)
+    # dm = Dropout(dropout_amount)(dm,training = use_dropout)
+    # dm = Dense(64)(dm)
+    # dm = Activation('gelu')(sm)
+    # dm = Dropout(dropout_amount)(dm,training = use_dropout)
 
-    dm_output = Dense(4,activation='linear')(dm)
+    dm_output = Dense(1,activation='linear')(dm)
+    # dm_output = Dropout(dropout_amount)(dm_output, training = use_dropout)
 
-    cat_layer = tf.keras.layers.Concatenate()([d_output,dm_output])
+    out_cat = tf.keras.layers.Add()([d_output,dm_output])
 
-    out_cat = Dense(2048)(cat_layer)
-    out_cat = Activation('gelu')(out_cat)
-    out_cat = Dropout(dropout_amount)(out_cat)
-    out_cat = Dense(64)(out_cat)
-    out_cat = Activation('gelu')(out_cat)
+    # out_cat = Dense(2048)(cat_layer)
+    # out_cat = Activation('gelu')(out_cat)
+    # out_cat = Dropout(dropout_amount)(out_cat)
+    # out_cat = Dense(64)(cat_layer)
+    # out_cat = Activation('gelu')(out_cat)
 
     output = Dense(1,activation='linear')(out_cat)
 
@@ -108,7 +113,8 @@ class test_on_improved_val_loss(tf.keras.callbacks.Callback):
             eval_result = self.model.evaluate([X_test,X_meta_test],y_test,batch_size=1,verbose=0,return_dict=True)
             print(eval_result)
 
-            plt.figure(1)
+            # plt.figure(1)
+            plt.close('all')
 
             predicted = self.model.predict([X_test,X_meta_test],batch_size=1).squeeze()
 

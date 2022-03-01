@@ -37,10 +37,17 @@ def idx_by_spearman_coef(data,metadata): # return the sorted calues by the small
     df = pd.DataFrame.from_dict(output,orient = 'index', columns = ['Spearman_coef','Sp-value','row'])
     df = df.sort_values(['Sp-value'], ascending = True)
     # df = df.sort_values(['mic_score'], ascending = False)
+
+    df2 = pd.read_csv('dense_regression/sorting_csv.csv',header=0, index_col=0)
+    in_L1000 = list(df2.index)
+
     sorted_gene_order = list(df.index)
     idx = np.zeros(shape = (1,len(sorted_gene_order))).squeeze()
+    idx_counter = 0
     for count,this_gene in enumerate(sorted_gene_order):
-        idx[count] = inital_gene_order.index(this_gene)
+        if this_gene in in_L1000:
+            idx[idx_counter] = inital_gene_order.index(this_gene)
+            idx_counter = idx_counter +1
     idx = idx.astype(np.int64)
 
     return idx,df
