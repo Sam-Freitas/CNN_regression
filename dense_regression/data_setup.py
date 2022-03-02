@@ -108,7 +108,8 @@ X_meta_raw = np.asarray(X_meta)
 
 MM = MinMaxScaler(feature_range = (-1,1))
 # MM = StandardScaler()
-X_norm = MM.fit_transform(X_raw)
+# X_norm = MM.fit_transform(X_raw)
+X_norm = X_raw
 # X_norm = X_raw
 y_norm = y_raw
 

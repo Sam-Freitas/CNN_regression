@@ -49,7 +49,7 @@ save_checkpoints = tf.keras.callbacks.ModelCheckpoint(
     filepath = 'dense_regression/model_weights/cp.ckpt', monitor = 'val_loss',
     mode = 'min',save_best_only = True,save_weights_only = True, verbose = 1)
 redule_lr = tf.keras.callbacks.ReduceLROnPlateau(
-    monitor = 'val_loss', factor = 0.9, patience = 15, min_lr = 0, verbose = 1)
+    monitor = 'val_loss', factor = 0.9, patience = 20, min_lr = 0, verbose = 1)
 earlystop = tf.keras.callbacks.EarlyStopping(
     monitor = 'val_loss',min_delta = 0,patience = 500, verbose = 1)
 on_epoch_end = test_on_improved_val_loss()
@@ -66,13 +66,15 @@ history = model.fit([X_train,X_meta_train],y_train,
     sample_weight = y_weights,
     validation_data = ([X_val,X_meta_val],y_val),
     batch_size=batch_size,epochs=epochs,
-    callbacks=[save_checkpoints,earlystop,redule_lr,on_epoch_end],
+    callbacks=[earlystop,redule_lr,on_epoch_end],
     verbose=1)
+
+model.save_weights('dense_regression/model_weights/model_weights')
 
 del model
 
 model = fully_connected_dense_model(num_features = num, use_dropout=False)
-model.load_weights('dense_regression/model_weights/cp.ckpt')
+model.load_weights('dense_regression/model_weights/model_weights')
 optimizer = tf.keras.optimizers.Adam(learning_rate = 0.001)
 model.compile(optimizer=optimizer,loss='MAE',metrics=['MSE'])
 
