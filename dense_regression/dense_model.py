@@ -105,7 +105,9 @@ class test_on_improved_val_loss(tf.keras.callbacks.Callback):
                 shutil.rmtree(os.path.join(curr_path, 'output_images_testing_during'))
                 os.mkdir(os.path.join(curr_path, 'output_images_testing_during'))
 
-        if curr_val_loss <= np.min(val_loss_hist) or epoch == 0:
+        # if curr_val_loss <= np.min(val_loss_hist) or epoch == 0:
+
+        if (epoch % 1000) == 0:
 
             temp = np.load(os.path.join(curr_path,'data_arrays','test.npz'))
             X_test,X_meta_test,y_test = temp['X'],temp['X_meta'],temp['y']

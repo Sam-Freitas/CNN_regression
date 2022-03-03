@@ -11,12 +11,13 @@ from sklearn.preprocessing import MinMaxScaler, LabelEncoder, PolynomialFeatures
 from dense_model import fully_connected_dense_model, plot_model,test_on_improved_val_loss
 import json
 from scipy import stats
+from scipy.spatial.distance import correlation as dist_corr_eucl
 from numpy.polynomial import Polynomial
 from sklearn.model_selection import train_test_split
 import random
 # from minepy.mine import MINE
 
-num = 8100
+num = 200
 
 def idx_by_spearman_coef(data,metadata): # return the sorted calues by the smallest p values accorind to the spearman coefficient
 
@@ -28,14 +29,15 @@ def idx_by_spearman_coef(data,metadata): # return the sorted calues by the small
         this_gene = inital_gene_order[count]
         these_points = data[this_gene].values
         sprmn_coef = stats.spearmanr(ages,these_points)
+        dist_coef = dist_corr_eucl(ages,these_points)
         # kendalltau = stats.kendalltau(ages,these_points)
         # m = MINE()
         # m.compute_scores(ages,these_points)
         # mic_score = m.mic()
 
-        output[this_gene] = [sprmn_coef.correlation,sprmn_coef.pvalue,count]
-    df = pd.DataFrame.from_dict(output,orient = 'index', columns = ['Spearman_coef','Sp-value','row'])
-    df = df.sort_values(['Sp-value'], ascending = True)
+        output[this_gene] = [sprmn_coef.correlation,sprmn_coef.pvalue,dist_coef,count]
+    df = pd.DataFrame.from_dict(output,orient = 'index', columns = ['Spearman_coef','Sp_value','dist_coef','row'])
+    df = df.sort_values(['Sp_value'], ascending = False)
     # df = df.sort_values(['mic_score'], ascending = False)
 
     df2 = pd.read_csv('dense_regression/sorting_csv.csv',header=0, index_col=0)
@@ -157,17 +159,24 @@ X_meta_test= X_meta_norm[test_idx]
 y_test = y_norm[test_idx]
 
 
-# add adversarial data
-np.random.seed(50)
-X_rand1 = (np.random.rand(X_train.shape[0],X_train.shape[1]) - 0.5)/2
-X_rand1 = X_train + X_rand1
-np.random.seed(100)
-X_rand2 = np.random.rand(X_train.shape[0],X_train.shape[1]) - 0.5
-X_rand2 = X_train + X_rand2
+# # add adversarial data
+# np.random.seed(50)
+# X_rand1 = (np.random.rand(X_train.shape[0],X_train.shape[1]) - 0.5)/2
+# X_rand1 = X_train + X_rand1
+# np.random.seed(100)
+# X_rand2 = np.random.rand(X_train.shape[0],X_train.shape[1])
+# X_rand2 = X_train + X_rand2
 
-X_train = np.concatenate([X_train,X_rand1,X_rand2],axis = 0)
-X_meta_train = np.concatenate([X_meta_train,X_meta_train,X_meta_train],axis = 0)
-y_train = np.concatenate([y_train,y_train,y_train],axis = 0)
+# X_train = np.concatenate([X_train,X_rand1,X_rand2],axis = 0)
+# X_meta_train = np.concatenate([X_meta_train,X_meta_train,X_meta_train],axis = 0)
+# y_train = np.concatenate([y_train,y_train,y_train],axis = 0)
+
+# shuffle_train_idx = np.arange(X_train.shape[0])
+poly = PolynomialFeatures(2,interaction_only=True)
+X_train = poly.fit_transform(X_train)
+X_val = poly.fit_transform(X_val)
+X_test = poly.fit_transform(X_test)
+
 
 # set up saving 
 to_save = os.path.split(__file__)[0]

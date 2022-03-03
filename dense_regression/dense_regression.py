@@ -49,7 +49,7 @@ save_checkpoints = tf.keras.callbacks.ModelCheckpoint(
     filepath = 'dense_regression/model_weights/cp.ckpt', monitor = 'val_loss',
     mode = 'min',save_best_only = True,save_weights_only = True, verbose = 1)
 redule_lr = tf.keras.callbacks.ReduceLROnPlateau(
-    monitor = 'val_loss', factor = 0.9, patience = 20, min_lr = 0, verbose = 1)
+    monitor = 'val_loss', factor = 0.9, patience = 40, min_lr = 0, verbose = 1)
 earlystop = tf.keras.callbacks.EarlyStopping(
     monitor = 'val_loss',min_delta = 0,patience = 500, verbose = 1)
 on_epoch_end = test_on_improved_val_loss()
