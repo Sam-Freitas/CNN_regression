@@ -21,25 +21,24 @@ import random
 this_tissue = 'All_tissues'
 
 temp = np.load('dense_regression/data_arrays/train.npz')
-X_train,X_meta_train,y_train = temp['X'],temp['X_meta'],temp['y']
+X_train,X_meta_train,y_train,y_train_cat,bins = temp['X'],temp['X_meta'],temp['y'],temp['y_cat'],temp['bins']
 temp = np.load('dense_regression/data_arrays/val.npz')
-X_val,X_meta_val,y_val = temp['X'],temp['X_meta'],temp['y']
+X_val,X_meta_val,y_val,y_val_cat = temp['X'],temp['X_meta'],temp['y'],temp['y_cat']
 temp = np.load('dense_regression/data_arrays/test.npz')
-X_test,X_meta_test,y_test = temp['X'],temp['X_meta'],temp['y']
+X_test,X_meta_test,y_test,y_test_cat = temp['X'],temp['X_meta'],temp['y'],temp['y_cat']
 
-y_weights = compute_sample_weight(class_weight = 'balanced', y = y_train)
-y_weighs = y_weights**2
-y_weights = np.ones(shape = y_weights.shape)
+y_weights = np.ones(shape = y_train.shape)
 del temp
 
 num = X_train.shape[1]
+num_bins = bins.shape[0]
 
 X_all = np.concatenate((X_train,X_val))
 X_meta_all = np.concatenate((X_meta_train,X_meta_val))
 y_all = np.concatenate((y_train,y_val))
 
 print('Setting up model')
-model = fully_connected_dense_model(num_features = num, use_dropout=True,dropout_amount = 0.1)
+model = fully_connected_dense_model(num_features = num, num_cat = num_bins,use_dropout=True,dropout_amount = 0.1)
 plot_model(model)
 
 epochs = 10000
@@ -55,16 +54,15 @@ earlystop = tf.keras.callbacks.EarlyStopping(
 on_epoch_end = test_on_improved_val_loss()
 
 optimizer = tf.keras.optimizers.Adam(learning_rate=0.0001)
-# optimizer = tf.keras.optimizers.RMSprop(learning_rate=0.0001)
 loss = tf.keras.losses.MeanSquaredError()
 
-model.compile(optimizer=optimizer,loss=loss,metrics=['MAE'])
+model.compile(optimizer=optimizer,loss=loss)
 
 model.summary()
 
 history = model.fit([X_train,X_meta_train],y_train,
     sample_weight = y_weights,
-    validation_data = ([X_val,X_meta_val],y_val),
+    validation_data = ([X_val,X_meta_val],[y_val]),
     batch_size=batch_size,epochs=epochs,
     callbacks=[earlystop,redule_lr,on_epoch_end],
     verbose=1)
@@ -76,9 +74,9 @@ del model
 model = fully_connected_dense_model(num_features = num, use_dropout=False)
 model.load_weights('dense_regression/model_weights/model_weights')
 optimizer = tf.keras.optimizers.Adam(learning_rate = 0.001)
-model.compile(optimizer=optimizer,loss='MAE',metrics=['MSE'])
+model.compile(optimizer=optimizer,loss='MeanSquaredError')
 
-eval_result = model.evaluate([X_test,X_meta_test],y_test,batch_size=1,verbose=1,return_dict=True)
+eval_result = model.evaluate([X_test,X_meta_test],[y_test,y_test_cat],batch_size=1,verbose=1,return_dict=True)
 print(eval_result)
 
 res = dict()
@@ -109,7 +107,7 @@ plt.text(np.min(y_all),np.max(y_all),"r^2: " + str(r_squared_train),fontsize = 1
 plt.text(np.min(y_all),np.max(y_all)-5,"r^2: " + str(r_squared_test),fontsize = 12, color = 'b')
 
 plt.legend(loc = 'upper center')
-plt.title(json.dumps(res))
+plt.title(json.dumps(res).replace(',','\n'),fontsize = 10)
 plt.xlabel('Expected Age (years)')
 plt.ylabel('Predicted Age (years)')
 

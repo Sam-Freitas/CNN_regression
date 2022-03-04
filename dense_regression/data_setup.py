@@ -17,7 +17,7 @@ from sklearn.model_selection import train_test_split
 import random
 # from minepy.mine import MINE
 
-num = 200
+num = 9618
 
 def idx_by_spearman_coef(data,metadata): # return the sorted calues by the smallest p values accorind to the spearman coefficient
 
@@ -37,7 +37,7 @@ def idx_by_spearman_coef(data,metadata): # return the sorted calues by the small
 
         output[this_gene] = [sprmn_coef.correlation,sprmn_coef.pvalue,dist_coef,count]
     df = pd.DataFrame.from_dict(output,orient = 'index', columns = ['Spearman_coef','Sp_value','dist_coef','row'])
-    df = df.sort_values(['Sp_value'], ascending = False)
+    df = df.sort_values(['Sp_value'], ascending = True)
     # df = df.sort_values(['mic_score'], ascending = False)
 
     df2 = pd.read_csv('dense_regression/sorting_csv.csv',header=0, index_col=0)
@@ -52,7 +52,23 @@ def idx_by_spearman_coef(data,metadata): # return the sorted calues by the small
             idx_counter = idx_counter +1
     idx = idx.astype(np.int64)
 
+    df.to_csv('data_preprocessing.csv')
+
     return idx,df
+
+def add_2_features(data):
+
+    new = []
+
+    for i in range(data.shape[0]):
+        new.append([np.std(data.iloc[i,:]),np.mean(data.iloc[i,:])])
+
+    new = np.asarray(new)
+
+    data['std'] = new[:,0]
+    data['mean'] = new[:,1]
+
+    return data
 
 print('loading in data')
 data = pd.read_csv('dense_regression/normalized_training_data_rot.csv',header=0, index_col=0)
@@ -75,6 +91,7 @@ metadata_healthy = metadata.iloc[single_tissue_index,:]
 
 sprt_idx,sort_help = idx_by_spearman_coef(data,metadata_healthy)
 data = data.iloc[:, sprt_idx[:num]]
+data = add_2_features(data)
 # data_std = data.std()
 # sorted_std_idx_ascend = np.argsort(data_std.values)
 # data = data.iloc[:, sorted_std_idx_ascend[-num:]]
@@ -145,37 +162,47 @@ temp = train_idx[test_idx]
 train_idx = np.delete(train_idx,test_idx)
 test_idx = temp
 
+# convert to categorical 
+max_bin = int(np.ceil(np.max(y_norm)/10)*10)
+n_bins = int((np.ceil(np.max(y_norm)/10)*10)/5 + 1)
+bins = np.linspace(0,max_bin,n_bins)
+n = np.digitize(y_norm,bins)
+y_cat = tf.keras.utils.to_categorical(n)
+
 # training data
 X_train = X_norm[train_idx]
 X_meta_train = X_meta_norm[train_idx]
 y_train = y_norm[train_idx]
+y_train_cat = y_cat[train_idx]
 # validation data
 X_val = X_norm[val_idx]
 X_meta_val = X_meta_norm[val_idx]
 y_val = y_norm[val_idx]
+y_val_cat = y_cat[val_idx]
 # test data
 X_test = X_norm[test_idx]
 X_meta_test= X_meta_norm[test_idx]
 y_test = y_norm[test_idx]
+y_test_cat = y_cat[test_idx]
 
 
-# # add adversarial data
-# np.random.seed(50)
-# X_rand1 = (np.random.rand(X_train.shape[0],X_train.shape[1]) - 0.5)/2
-# X_rand1 = X_train + X_rand1
-# np.random.seed(100)
-# X_rand2 = np.random.rand(X_train.shape[0],X_train.shape[1])
-# X_rand2 = X_train + X_rand2
+# add adversarial data
+np.random.seed(50)
+X_rand1 = (np.random.rand(X_train.shape[0],X_train.shape[1]) - 0.5)/2
+X_rand1 = X_train + X_rand1
+np.random.seed(100)
+X_rand2 = np.random.rand(X_train.shape[0],X_train.shape[1])
+X_rand2 = X_train + X_rand2
 
-# X_train = np.concatenate([X_train,X_rand1,X_rand2],axis = 0)
-# X_meta_train = np.concatenate([X_meta_train,X_meta_train,X_meta_train],axis = 0)
-# y_train = np.concatenate([y_train,y_train,y_train],axis = 0)
+X_train = np.concatenate([X_train,X_rand1,X_rand2],axis = 0)
+X_meta_train = np.concatenate([X_meta_train,X_meta_train,X_meta_train],axis = 0)
+y_train = np.concatenate([y_train,y_train,y_train],axis = 0)
 
-# shuffle_train_idx = np.arange(X_train.shape[0])
-poly = PolynomialFeatures(2,interaction_only=True)
-X_train = poly.fit_transform(X_train)
-X_val = poly.fit_transform(X_val)
-X_test = poly.fit_transform(X_test)
+# # shuffle_train_idx = np.arange(X_train.shape[0])
+# poly = PolynomialFeatures(2,interaction_only=True)
+# X_train = poly.fit_transform(X_train)
+# X_val = poly.fit_transform(X_val)
+# X_test = poly.fit_transform(X_test)
 
 
 # set up saving 
@@ -186,12 +213,12 @@ save_path = os.path.join(to_save,save_dir)
 os.makedirs(save_path, exist_ok = True)
 
 train_save_path = os.path.join(save_path,'train')
-np.savez(train_save_path,X = X_train,X_meta = X_meta_train,y = y_train)
+np.savez(train_save_path,X = X_train,X_meta = X_meta_train,y = y_train,y_cat = y_train_cat, bins = bins)
 
 val_save_path = os.path.join(save_path,'val')
-np.savez(val_save_path,X = X_val,X_meta = X_meta_val,y = y_val)
+np.savez(val_save_path,X = X_val,X_meta = X_meta_val,y = y_val,y_cat = y_val_cat)
 
 test_save_path = os.path.join(save_path,'test')
-np.savez(test_save_path,X = X_test,X_meta = X_meta_test,y = y_test)
+np.savez(test_save_path,X = X_test,X_meta = X_meta_test,y = y_test,y_cat = y_test_cat,bins = bins)
 
 print('eof')

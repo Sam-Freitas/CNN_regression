@@ -17,46 +17,32 @@ import sys
 import cv2
 import os
 
-def fully_connected_dense_model(num_features = 2048, use_dropout = False, dropout_amount = 0.8):
+def fully_connected_dense_model(num_features = 2048, num_cat = 21, use_dropout = False, dropout_amount = 0.8):
 
+    # rna-seq data input
     inputs_data = Input(shape = (num_features,))
-
     s = Dense(num_features+1,input_shape = inputs_data.shape)(inputs_data)
     d = Activation('sigmoid')(s)
     d = Dropout(dropout_amount)(d, training = use_dropout)
-    d = Dense(10000)(d)
+    d = Dense(6000)(d)
     d = Activation('elu')(d)
     d = Dropout(dropout_amount)(d, training = use_dropout)
-    # d = Dense(4)(d)
-    # d = Activation('elu')(d)
-    # d = Dropout(dropout_amount)(d, training = use_dropout)
-
-    d_output = Dense(1,activation='linear')(d)
-    # d_output = Dropout(dropout_amount)(d_output, training = use_dropout)
-
+    # metdata inputs 
     inputs_metadata = Input(shape = (2,)) # sex, tissue type
-
     sm = Dense(512,input_shape = inputs_metadata.shape)(inputs_metadata)
     dm = Activation('elu')(sm)
-    # dm = Dropout(dropout_amount)(dm,training = use_dropout)
-    # dm = Dense(64)(dm)
-    # dm = Activation('gelu')(sm)
-    # dm = Dropout(dropout_amount)(dm,training = use_dropout)
 
+    # block outputs data
+    d_output = Dense(1,activation='linear')(d)
     dm_output = Dense(1,activation='linear')(dm)
-    # dm_output = Dropout(dropout_amount)(dm_output, training = use_dropout)
 
-    out_cat = tf.keras.layers.Add()([d_output,dm_output])
+    #concatinations
+    out_concat = tf.keras.layers.Add()([d_output,dm_output])
 
-    # out_cat = Dense(2048)(cat_layer)
-    # out_cat = Activation('gelu')(out_cat)
-    # out_cat = Dropout(dropout_amount)(out_cat)
-    # out_cat = Dense(64)(cat_layer)
-    # out_cat = Activation('gelu')(out_cat)
+    # final output layes for data exportation
+    output = Dense(1,activation='linear',name = 'coninious_output')(out_concat)
 
-    output = Dense(1,activation='linear')(out_cat)
-
-    model = Model(inputs=[inputs_data,inputs_metadata], outputs=[output])
+    model = Model(inputs=[inputs_data,inputs_metadata], outputs=[output])#,out_categorical])
 
     return model
 
@@ -105,14 +91,15 @@ class test_on_improved_val_loss(tf.keras.callbacks.Callback):
                 shutil.rmtree(os.path.join(curr_path, 'output_images_testing_during'))
                 os.mkdir(os.path.join(curr_path, 'output_images_testing_during'))
 
-        # if curr_val_loss <= np.min(val_loss_hist) or epoch == 0:
+        if curr_val_loss <= np.min(val_loss_hist) or epoch == 0:
+            print("val_loss improved to:",curr_val_loss)
 
-        if (epoch % 1000) == 0:
+        if (epoch % 25) == 0:
 
             temp = np.load(os.path.join(curr_path,'data_arrays','test.npz'))
-            X_test,X_meta_test,y_test = temp['X'],temp['X_meta'],temp['y']
+            X_test,X_meta_test,y_test,y_test_cat,bins = temp['X'],temp['X_meta'],temp['y'],temp['y_cat'],temp['bins']
 
-            eval_result = self.model.evaluate([X_test,X_meta_test],y_test,batch_size=1,verbose=0,return_dict=True)
+            eval_result = self.model.evaluate([X_test,X_meta_test],[y_test],batch_size=1,verbose=0,return_dict=True)
             print(eval_result)
 
             # plt.figure(1)
@@ -120,7 +107,7 @@ class test_on_improved_val_loss(tf.keras.callbacks.Callback):
 
             predicted = self.model.predict([X_test,X_meta_test],batch_size=1).squeeze()
 
-            cor_matrix = np.corrcoef(predicted.squeeze(),y_test)
+            cor_matrix = np.corrcoef(predicted,y_test)
             cor_xy = cor_matrix[0,1]
             r_squared = round(cor_xy**2,4)
             print("Current r_squared test:",r_squared)
@@ -131,7 +118,7 @@ class test_on_improved_val_loss(tf.keras.callbacks.Callback):
             plt.scatter(y_test,predicted,color = 'r',alpha=0.2)
             plt.plot(np.linspace(np.min(y_test), np.max(y_test)),np.linspace(np.min(y_test), np.max(y_test)))
             plt.text(np.min(y_test),np.max(y_test),"r^2: " + str(r_squared),fontsize = 12)
-            plt.title(json.dumps(res))
+            plt.title(json.dumps(res).replace(',', '\n'),fontsize = 10)
             plt.xlabel('Expected Age (years)')
             plt.ylabel('Predicted Age (years)')
 
