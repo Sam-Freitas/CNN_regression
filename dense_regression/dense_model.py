@@ -18,15 +18,18 @@ import cv2
 import os
 
 def fully_connected_dense_model(num_features = 2048, num_cat = 21, use_dropout = False, dropout_amount = 0.8):
-
+    
     # rna-seq data input
     inputs_data = Input(shape = (num_features,))
     s = Dense(num_features+1,input_shape = inputs_data.shape)(inputs_data)
+    s = tf.keras.layers.GaussianNoise()(s, training = use_dropout)
     d = Activation('sigmoid')(s)
     d = Dropout(dropout_amount)(d, training = use_dropout)
+    d = tf.keras.layers.GaussianNoise()(d, training = use_dropout)
     d = Dense(6000)(d)
     d = Activation('elu')(d)
     d = Dropout(dropout_amount)(d, training = use_dropout)
+    d = tf.keras.layers.GaussianNoise()(d, training = use_dropout)
     # metdata inputs 
     inputs_metadata = Input(shape = (2,)) # sex, tissue type
     sm = Dense(512,input_shape = inputs_metadata.shape)(inputs_metadata)
