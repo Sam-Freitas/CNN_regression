@@ -15,6 +15,7 @@ import numpy as np
 import imutils
 import shutil
 import random
+import json
 import glob
 import sys
 import cv2
@@ -67,12 +68,12 @@ def fully_connected_CNN_v2(use_dropout = False, height = 128, width = 128, chann
     pool_3 = MaxPooling2D((2,2))(conv_3)
 
     # first block of convolutions
-    conv_2 = Conv2D(inital_filter_size, (7,7), activation = None, kernel_initializer = 'he_normal', padding = 'same')(s)
+    conv_2 = Conv2D(inital_filter_size, (9,9), activation = None, kernel_initializer = 'he_normal', padding = 'same')(s)
     conv_2 = DropBlock2D(keep_prob = dropsize, block_size = blocksize)(conv_2, training = use_dropout)
     conv_2 = BatchNormalization()(conv_2)
     conv_2 = Activation('relu')(conv_2)
 
-    conv_2 = Conv2D(inital_filter_size, (7,7), activation = None, kernel_initializer = 'he_normal', padding = 'same')(conv_2)
+    conv_2 = Conv2D(inital_filter_size, (9,9), activation = None, kernel_initializer = 'he_normal', padding = 'same')(conv_2)
     conv_2 = DropBlock2D(keep_prob = dropsize, block_size = blocksize)(conv_2, training = use_dropout)
     conv_2 = BatchNormalization()(conv_2)
     conv_2 = Activation('relu')(conv_2)
@@ -80,12 +81,12 @@ def fully_connected_CNN_v2(use_dropout = False, height = 128, width = 128, chann
     pool_2 = MaxPooling2D((2,2))(conv_2)
 
     # second block of convolutions
-    conv_2 = Conv2D(inital_filter_size*2, (7,7), activation = None, kernel_initializer = 'he_normal', padding = 'same') (pool_2)
+    conv_2 = Conv2D(inital_filter_size*2, (9,9), activation = None, kernel_initializer = 'he_normal', padding = 'same') (pool_2)
     conv_2 = DropBlock2D(keep_prob = dropsize, block_size = blocksize)(conv_2, training = use_dropout)
     conv_2 = BatchNormalization()(conv_2)
     conv_2 = Activation('relu')(conv_2)
 
-    conv_2 = Conv2D(inital_filter_size*2, (7,7), activation = None, kernel_initializer = 'he_normal', padding = 'same')(conv_2)
+    conv_2 = Conv2D(inital_filter_size*2, (9,9), activation = None, kernel_initializer = 'he_normal', padding = 'same')(conv_2)
     conv_2 = DropBlock2D(keep_prob = dropsize, block_size = blocksize)(conv_2, training = use_dropout)
     conv_2 = BatchNormalization()(conv_2)
     conv_2 = Activation('relu')(conv_2)
@@ -93,12 +94,12 @@ def fully_connected_CNN_v2(use_dropout = False, height = 128, width = 128, chann
     pool_2 = MaxPooling2D((2,2))(conv_2)
 
     # third block of convolutions
-    conv_2 = Conv2D(inital_filter_size*4, (7,7), activation = None, kernel_initializer = 'he_normal', padding = 'same') (pool_2)
+    conv_2 = Conv2D(inital_filter_size*4, (9,9), activation = None, kernel_initializer = 'he_normal', padding = 'same') (pool_2)
     conv_2 = DropBlock2D(keep_prob = dropsize, block_size = blocksize)(conv_2, training = use_dropout)
     conv_2 = BatchNormalization()(conv_2)
     conv_2 = Activation('relu')(conv_2)
 
-    conv_2 = Conv2D(inital_filter_size*4, (7,7), activation = None, kernel_initializer = 'he_normal', padding = 'same')(conv_2)
+    conv_2 = Conv2D(inital_filter_size*4, (9,9), activation = None, kernel_initializer = 'he_normal', padding = 'same')(conv_2)
     conv_2 = DropBlock2D(keep_prob = dropsize, block_size = blocksize)(conv_2, training = use_dropout)
     conv_2 = BatchNormalization()(conv_2)
     conv_2 = Activation('relu')(conv_2)
@@ -109,7 +110,7 @@ def fully_connected_CNN_v2(use_dropout = False, height = 128, width = 128, chann
 
     flattened = tf.keras.layers.Flatten()(cat_layer)
 
-    d = Dense(6000)(flattened)
+    d = Dense(1000)(flattened)
     d = Activation('elu')(d)
     d = Dropout(0.1)(d, training = use_dropout)
 
@@ -372,3 +373,58 @@ def load_rotated_minst_dataset(seed = None):
     y_out = y_out[:1000]
 
     return (X_out,y_out),(X_out_val,y_out_val) ,(X_out_test,y_out_test)
+
+class test_on_improved_val_loss(tf.keras.callbacks.Callback):
+    def on_epoch_end(self, epoch, logs=None):
+
+        curr_path = os.path.split(__file__)[0]
+
+        curr_val_loss = logs['val_loss']
+        try:
+            val_loss_hist = self.model.history.history['val_loss']
+        except:
+            val_loss_hist = curr_val_loss + 1
+
+        if epoch == 0:
+            try:
+                os.mkdir(os.path.join(curr_path, 'output_images_testing_during'))
+            except:
+                shutil.rmtree(os.path.join(curr_path, 'output_images_testing_during'))
+                os.mkdir(os.path.join(curr_path, 'output_images_testing_during'))
+
+        if curr_val_loss <= np.min(val_loss_hist) or epoch == 0:
+            print("val_loss improved to:",curr_val_loss)
+
+        if (epoch % 25) == 0:
+
+            temp = np.load(os.path.join(curr_path,'data_arrays','test.npz'))
+            X_test,X_meta_test,y_test = temp['X'],temp['X_meta'],temp['y']
+
+            eval_result = self.model.evaluate([X_test,X_meta_test],[y_test],batch_size=1,verbose=0,return_dict=True)
+            print(eval_result)
+
+            # plt.figure(1)
+            plt.close('all')
+
+            predicted = self.model.predict([X_test,X_meta_test],batch_size=1).squeeze()
+
+            cor_matrix = np.corrcoef(predicted,y_test)
+            cor_xy = cor_matrix[0,1]
+            r_squared = round(cor_xy**2,4)
+            print("Current r_squared test:",r_squared)
+
+            res = dict()
+            for key in eval_result: res[key] = round(eval_result[key],6)
+
+            plt.scatter(y_test,predicted,color = 'r',alpha=0.2)
+            plt.plot(np.linspace(np.min(y_test), np.max(y_test)),np.linspace(np.min(y_test), np.max(y_test)))
+            plt.text(np.min(y_test),np.max(y_test),"r^2: " + str(r_squared),fontsize = 12)
+            plt.title(json.dumps(res).replace(',', '\n'),fontsize = 10)
+            plt.xlabel('Expected Age (years)')
+            plt.ylabel('Predicted Age (years)')
+
+            output_name = os.path.join(curr_path,'output_images_testing_during',str(epoch) + '_' + str(r_squared)[2:] + '.png')
+
+            plt.savefig(fname = output_name)
+
+            plt.close('all')
