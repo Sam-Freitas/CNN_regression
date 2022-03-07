@@ -105,63 +105,28 @@ def fully_connected_CNN_v2(use_dropout = False, height = 128, width = 128, chann
 
     pool_2 = MaxPooling2D((2,2))(conv_2)
 
-    # first block of convolutions
-    conv_1 = Conv2D(inital_filter_size, (5,5), activation = None, kernel_initializer = 'he_normal', padding = 'same')(s)
-    conv_1 = DropBlock2D(keep_prob = dropsize, block_size = blocksize)(conv_1, training = use_dropout)
-    conv_1 = BatchNormalization()(conv_1)
-    conv_1 = Activation('relu')(conv_1)
-
-    conv_1 = Conv2D(inital_filter_size, (5,5), activation = None, kernel_initializer = 'he_normal', padding = 'same')(conv_1)
-    conv_1 = DropBlock2D(keep_prob = dropsize, block_size = blocksize)(conv_1, training = use_dropout)
-    conv_1 = BatchNormalization()(conv_1)
-    conv_1 = Activation('relu')(conv_1)
-
-    pool_1 = MaxPooling2D((2,2))(conv_1)
-
-    # second block of convolutions
-    conv_1 = Conv2D(inital_filter_size*2, (5,5), activation = None, kernel_initializer = 'he_normal', padding = 'same') (pool_1)
-    conv_1 = DropBlock2D(keep_prob = dropsize, block_size = blocksize)(conv_1, training = use_dropout)
-    conv_1 = BatchNormalization()(conv_1)
-    conv_1 = Activation('relu')(conv_1)
-
-    conv_1 = Conv2D(inital_filter_size*2, (5,5), activation = None, kernel_initializer = 'he_normal', padding = 'same')(conv_1)
-    conv_1 = DropBlock2D(keep_prob = dropsize, block_size = blocksize)(conv_1, training = use_dropout)
-    conv_1 = BatchNormalization()(conv_1)
-    conv_1 = Activation('relu')(conv_1)
-
-    pool_1 = MaxPooling2D((2,2))(conv_1)
-
-    # third block of convolutions
-    conv_1 = Conv2D(inital_filter_size*4, (5,5), activation = None, kernel_initializer = 'he_normal', padding = 'same') (pool_1)
-    conv_1 = DropBlock2D(keep_prob = dropsize, block_size = blocksize)(conv_1, training = use_dropout)
-    conv_1 = BatchNormalization()(conv_1)
-    conv_1 = Activation('relu')(conv_1)
-
-    conv_1 = Conv2D(inital_filter_size*4, (5,5), activation = None, kernel_initializer = 'he_normal', padding = 'same')(conv_1)
-    conv_1 = DropBlock2D(keep_prob = dropsize, block_size = blocksize)(conv_1, training = use_dropout)
-    conv_1 = BatchNormalization()(conv_1)
-    conv_1 = Activation('relu')(conv_1)
-
-    pool_1 = MaxPooling2D((2,2))(conv_1)
-
-    cat_layer = tf.keras.layers.Concatenate()([pool_1,pool_2,pool_3])
-
-    # conv_final = Conv2D(256, (1,1), activation = None, kernel_initializer = 'he_normal', padding = 'same')(cat_layer)
-    # conv_final = Activation('relu')(conv_final)
-
-    # flattened = tf.keras.layers.Flatten()(conv_final)
+    cat_layer = tf.keras.layers.Add()([pool_2,pool_3])
 
     flattened = tf.keras.layers.Flatten()(cat_layer)
-    d = Dense(900, activation='gelu')(flattened)
-    d = Activation('gelu')(d)
-    d = Dropout(0.8)(d, training = use_dropout)
-    d = Dense(2048,activation='gelu')(d)
-    d = Activation('gelu')(d)
-    d = Dropout(0.8)(d, training = use_dropout)
 
-    output = Dense(1,activation='linear')(d)
+    d = Dense(6000)(flattened)
+    d = Activation('elu')(d)
+    d = Dropout(0.1)(d, training = use_dropout)
 
-    model = Model(inputs=[inputs], outputs=[output])
+    d_output = Dense(1,activation='linear')(d)
+
+    inputs_metadata = Input(shape = (2,)) # sex, tissue type
+    sm = Dense(512,input_shape = inputs_metadata.shape)(inputs_metadata)
+    dm = Activation('elu')(sm)
+    dm_output = Dense(1,activation='linear')(dm)
+
+    #concatinations
+    out_concat = tf.keras.layers.Add()([d_output,dm_output])
+
+    # final output layes for data exportation
+    output = Dense(1,activation='linear',name = 'coninious_output')(out_concat)
+
+    model = Model(inputs=[inputs,inputs_metadata], outputs=[output])
 
     return model
 

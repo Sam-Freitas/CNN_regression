@@ -7,152 +7,106 @@ import glob
 import json
 import tqdm
 import matplotlib.pyplot as plt
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, LabelEncoder
 from natsort import natsorted, natsort_keygen
 from CNN_regression_model import fully_connected_CNN_v2, plot_model
 from sklearn.preprocessing import PowerTransformer
 
-# (X,y), (X_val,y_val), (test_X,test_y) = load_rotated_minst_dataset(seed = 50)
-
 print('reading in metadata')
 
-# this_tissue = 'Blood;PBMC'
-this_tissue = 'Adipose;'
+this_tissue = 'All_tissues;'
 
-dataset = '_1_900'
+dataset = ''
 
-data_path = '/groups/sutphin/NN_trainings/IGTD/Results/' + this_tissue + dataset + '/data'
-metadata_path = '/home/u23/samfreitas/NN_trainings/CNN_regression/dense_regression/meta_filtered.csv'
-imgs_list = natsorted(glob.glob(os.path.join(data_path,'*.txt')))
-metadata = pd.read_csv(metadata_path)
+temp = np.load('data_arrays/train.npz')
+X_train,X_meta_train,y_train = temp['X'],temp['X_meta'],temp['y']
+temp = np.load('data_arrays/val.npz')
+X_val,X_meta_val,y_val = temp['X'],temp['X_meta'],temp['y']
+temp = np.load('data_arrays/test.npz')
+X_test,X_meta_test,y_test = temp['X'],temp['X_meta'],temp['y']
 
-healthy_idx = metadata['Healthy'].values
-metadata_healthy = metadata.iloc[healthy_idx,:]
+X_all = np.concatenate((X_train,X_val))
+X_meta_all = np.concatenate((X_meta_train,X_meta_val))
+y_all = np.concatenate((y_train,y_val))
+num = X_train.shape[1]
 
-SRR_values = metadata_healthy['SRR.ID'].values
-unique_tissues = np.unique(metadata_healthy['Tissue'].values)
-
-# this_tissue = unique_tissues[2]
-print('Current tissue',this_tissue)
-
-X = []
-y = []
-print('reading in data')
-PT = PowerTransformer()
-for count in tqdm.tqdm(range(len(imgs_list))):
-
-    this_img = imgs_list[count]
-
-    srr_id = os.path.basename(imgs_list[count])[1:-9]
-    this_imgs_meta_idx = (SRR_values == srr_id)
-    this_metadata = metadata_healthy.iloc[this_imgs_meta_idx,:]
-    if (this_metadata['Tissue'].values == this_tissue).squeeze():
-        y.append(metadata_healthy.iloc[this_imgs_meta_idx,:]['Age'].values.squeeze())
-        temp_img = np.loadtxt(this_img, comments='#',delimiter="\t",unpack=False)
-        X.append((temp_img - np.min(temp_img))/(np.max(temp_img) - np.min(temp_img)))#/np.max(temp_img))
-
-if not y:
-    print('BAD LIST')
-
-del count,this_img
-X = np.asarray(X)
-y = np.asarray(y)
-
-X_scale = X #- np.median(X,axis = 0)
-y_norm = y
-
-val_idx = []
-for unique_num in np.unique(y_norm): #[0::2]:
-    indices = np.where(y_norm==unique_num)
-    if indices[0].shape[0] > 3:
-        val_idx.extend(np.where(y_norm==unique_num)[0][0:3])
-
-train_idx = np.arange(y.shape[0])
-train_idx = np.delete(train_idx,val_idx)
-
-X_train = X_scale[train_idx]
-y_train = y_norm[train_idx]
-X_val = X_scale[val_idx]
-y_val = y_norm[val_idx]
-
-model = fully_connected_CNN_v2(height=X.shape[1],width=X.shape[2],use_dropout=True,inital_filter_size=32)
-# model = ResNet50v2_regression(height=X.shape[1],width=X.shape[2],use_dropout=False)
+model = fully_connected_CNN_v2(height=X_train.shape[1],width=X_train.shape[2],use_dropout=True,inital_filter_size=32)
 plot_model(model)
 
 epochs = 10000
+batch_size = 256
 
 save_checkpoints = tf.keras.callbacks.ModelCheckpoint(
     filepath = 'model_weights/cp.ckpt', monitor = 'val_loss',
     mode = 'min',save_best_only = True,save_weights_only = True, verbose = 1)
 redule_lr = tf.keras.callbacks.ReduceLROnPlateau(
-    monitor = 'val_loss', factor = 0.1, patience = 250, min_lr = 0.0000001, verbose = 1)
+    monitor = 'val_loss', factor = 0.9, patience = 40, min_lr = 0, verbose = 1)
 earlystop = tf.keras.callbacks.EarlyStopping(
-    monitor = 'val_loss',min_delta = 0.01,patience = 3000, verbose = 1)
+    monitor = 'val_loss',min_delta = 0,patience = 500, verbose = 1)
 # optimizer = tf.keras.optimizers.RMSprop(momentum=0.75)#, momentum=0.9)
 optimizer = tf.keras.optimizers.Adam(learning_rate = 0.0001)
 model.compile(optimizer=optimizer,loss='MAE',metrics=['MSE'])
 
-def scheduler(epoch, lr):
-
-    if (epoch % 1000 == 0) and epoch > 0:
-        lr = lr/2
-
-    # if epoch < 100:
-    #     lr = 0.0001
-    # elif epoch > 99 and epoch < 250:
-    #     lr = 0.00005
-    # else:
-    #     lr = 0.00001
-    return lr
-lr_scheduler = tf.keras.callbacks.LearningRateScheduler(scheduler)
-
-
-
-history = model.fit(X_train,y_train,
-    validation_data = (X_val,y_val),
-    batch_size=32,epochs=epochs,
-    callbacks=[save_checkpoints,earlystop,lr_scheduler],
+history = model.fit([X_train,X_meta_train],y_train,
+    validation_data = ([X_val,X_meta_val],y_val),
+    batch_size=batch_size,epochs=epochs,
+    callbacks=[earlystop,redule_lr],
     verbose=1)
+
+model.save_weights('model_weights/model_weights')
 
 del model
 
-model = fully_connected_CNN_v2(height=X.shape[1],width=X.shape[2],use_dropout=False,inital_filter_size=32)
+model = fully_connected_CNN_v2(height=X_train.shape[1],width=X_train.shape[2],use_dropout=False,inital_filter_size=32)
 model.compile(optimizer=optimizer,loss='MAE',metrics=['MSE'])
-model.load_weights('model_weights/cp.ckpt')
+model.load_weights('model_weights/model_weights')
 
-eval_result = model.evaluate(X_scale,y_norm,batch_size=1,verbose=1,return_dict=True)
-
-plt.figure(1)
-
-predicted = model.predict(X_scale).squeeze()
-
-cor_matrix = np.corrcoef(predicted.squeeze(),y_norm)
-cor_xy = cor_matrix[0,1]
-r_squared = round(cor_xy**2,4)
-print(r_squared)
-
-model.save('compiled_models/' + str(r_squared)[2:] + this_tissue + dataset )
-
-plt.scatter(y_norm,predicted,color = 'r',alpha=0.5)
-plt.plot(np.linspace(np.min(y_norm), np.max(y_norm)),np.linspace(np.min(y_norm), np.max(y_norm)))
-plt.text(np.min(y_norm),np.max(y_norm),"r^2: " + str(r_squared),fontsize = 12)
-plt.xlabel('Expected Age (years)')
-plt.ylabel('Predicted Age (years)')
-
-plt.savefig(fname = "model_predictions" + str(this_tissue).replace('/','-') + ".png")
-
-plt.close('all')
-
-plt.figure(2)
-for this_key in list(history.history.keys()):
-    b = history.history[this_key]
-    plt.plot(b,label = this_key)
+eval_result = model.evaluate([X_test,X_meta_test],[y_test],batch_size=1,verbose=1,return_dict=True)
+print(eval_result)
 
 res = dict()
 for key in eval_result: res[key] = round(eval_result[key],6)
 
+plt.figure(1)
+
+predicted_test = model.predict([X_test,X_meta_test],batch_size=1).squeeze()
+predicted_train = model.predict([X_all,X_meta_all],batch_size=1).squeeze()
+
+cor_matrix = np.corrcoef(predicted_test.squeeze(),y_test)
+cor_xy = cor_matrix[0,1]
+r_squared_test = round(cor_xy**2,4)
+print("test",r_squared_test)
+
+cor_matrix = np.corrcoef(predicted_train.squeeze(),y_all)
+cor_xy = cor_matrix[0,1]
+r_squared_train = round(cor_xy**2,4)
+print("train",r_squared_train)
+
+model.save('compiled_models/' + str(r_squared_test)[2:] + this_tissue + '_' + str(num))
+
+plt.scatter(y_all,predicted_train,color = 'r',alpha=0.2, label = 'training data')
+plt.scatter(y_test,predicted_test,color = 'b',alpha=0.3, label = 'testing data')
+plt.plot(np.linspace(np.min(y_all), np.max(y_all)),np.linspace(np.min(y_all), np.max(y_all)))
+
+plt.text(np.min(y_all),np.max(y_all),"r^2: " + str(r_squared_train),fontsize = 12, color = 'r')
+plt.text(np.min(y_all),np.max(y_all)-5,"r^2: " + str(r_squared_test),fontsize = 12, color = 'b')
+
+plt.legend(loc = 'upper center')
+plt.title(json.dumps(res).replace(',','\n'),fontsize = 10)
+plt.xlabel('Expected Age (years)')
+plt.ylabel('Predicted Age (years)')
+
+plt.savefig(fname = "test_model_predictions" + str(this_tissue).replace('/','-') + ".png")
+
+plt.close('all')
+
+plt.figure(3)
+for this_key in list(history.history.keys()):
+    b = history.history[this_key]
+    plt.plot(b,label = this_key)
+
 plt.legend(loc="upper left")
-plt.ylim([0,15])
+plt.ylim([0,50])
 plt.title(json.dumps(res))
 plt.savefig(fname=  "training_history" + str(this_tissue).replace('/','-') + ".png")
 
