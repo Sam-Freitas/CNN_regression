@@ -29,80 +29,80 @@ def fully_connected_CNN_v2(use_dropout = False, height = 128, width = 128, chann
     s = inputs
 
     # first block of convolutions
-    conv_3 = Conv2D(inital_filter_size, (3,3), activation = None, kernel_initializer = 'he_normal', padding = 'same')(s)
+    conv_3 = Conv2D(inital_filter_size, (3,3), activation = None, kernel_initializer = 'he_normal', padding = 'same', strides = (1,1))(s)
     conv_3 = DropBlock2D(keep_prob = dropsize, block_size = blocksize)(conv_3, training = use_dropout)
     conv_3 = BatchNormalization()(conv_3)
-    conv_3 = Activation('relu')(conv_3)
+    conv_3 = Activation('elu')(conv_3)
 
-    conv_3 = Conv2D(inital_filter_size, (3,3), activation = None, kernel_initializer = 'he_normal', padding = 'same')(conv_3)
+    conv_3 = Conv2D(inital_filter_size, (3,3), activation = None, kernel_initializer = 'he_normal', padding = 'same', strides = (1,1))(conv_3)
     conv_3 = DropBlock2D(keep_prob = dropsize, block_size = blocksize)(conv_3, training = use_dropout)
     conv_3 = BatchNormalization()(conv_3)
-    conv_3 = Activation('relu')(conv_3)
+    conv_3 = Activation('elu')(conv_3)
 
     pool_3 = MaxPooling2D((2,2))(conv_3)
 
     # second block of convolutions
-    conv_3 = Conv2D(inital_filter_size*2, (3,3), activation = None, kernel_initializer = 'he_normal', padding = 'same') (pool_3)
+    conv_3 = Conv2D(inital_filter_size*2, (3,3), activation = None, kernel_initializer = 'he_normal', padding = 'same', strides = (1,1))(pool_3)
     conv_3 = DropBlock2D(keep_prob = dropsize, block_size = blocksize)(conv_3, training = use_dropout)
     conv_3 = BatchNormalization()(conv_3)
-    conv_3 = Activation('relu')(conv_3)
+    conv_3 = Activation('elu')(conv_3)
 
-    conv_3 = Conv2D(inital_filter_size*2, (3,3), activation = None, kernel_initializer = 'he_normal', padding = 'same')(conv_3)
+    conv_3 = Conv2D(inital_filter_size*2, (3,3), activation = None, kernel_initializer = 'he_normal', padding = 'same', strides = (1,1))(conv_3)
     conv_3 = DropBlock2D(keep_prob = dropsize, block_size = blocksize)(conv_3, training = use_dropout)
     conv_3 = BatchNormalization()(conv_3)
-    conv_3 = Activation('relu')(conv_3)
+    conv_3 = Activation('elu')(conv_3)
 
     pool_3 = MaxPooling2D((2,2))(conv_3)
 
     # third block of convolutions
-    conv_3 = Conv2D(inital_filter_size*4, (3,3), activation = None, kernel_initializer = 'he_normal', padding = 'same') (pool_3)
+    conv_3 = Conv2D(inital_filter_size*4, (3,3), activation = None, kernel_initializer = 'he_normal', padding = 'same', strides = (1,1))(pool_3)
     conv_3 = DropBlock2D(keep_prob = dropsize, block_size = blocksize)(conv_3, training = use_dropout)
     conv_3 = BatchNormalization()(conv_3)
-    conv_3 = Activation('relu')(conv_3)
+    conv_3 = Activation('elu')(conv_3)
 
-    conv_3 = Conv2D(inital_filter_size*4, (3,3), activation = None, kernel_initializer = 'he_normal', padding = 'same')(conv_3)
+    conv_3 = Conv2D(inital_filter_size*4, (3,3), activation = None, kernel_initializer = 'he_normal', padding = 'same', strides = (1,1))(conv_3)
     conv_3 = DropBlock2D(keep_prob = dropsize, block_size = blocksize)(conv_3, training = use_dropout)
     conv_3 = BatchNormalization()(conv_3)
-    conv_3 = Activation('relu')(conv_3)
+    conv_3 = Activation('elu')(conv_3)
 
     pool_3 = MaxPooling2D((2,2))(conv_3)
 
     # first block of convolutions
-    conv_2 = Conv2D(inital_filter_size, (9,9), activation = None, kernel_initializer = 'he_normal', padding = 'same')(s)
+    conv_2 = Conv2D(inital_filter_size, (9,9), activation = None, kernel_initializer = 'he_normal', padding = 'same', strides = (1,1))(s)
     conv_2 = DropBlock2D(keep_prob = dropsize, block_size = blocksize)(conv_2, training = use_dropout)
     conv_2 = BatchNormalization()(conv_2)
-    conv_2 = Activation('relu')(conv_2)
+    conv_2 = Activation('elu')(conv_2)
 
-    conv_2 = Conv2D(inital_filter_size, (9,9), activation = None, kernel_initializer = 'he_normal', padding = 'same')(conv_2)
+    conv_2 = Conv2D(inital_filter_size, (9,9), activation = None, kernel_initializer = 'he_normal', padding = 'same', strides = (1,1))(conv_2)
     conv_2 = DropBlock2D(keep_prob = dropsize, block_size = blocksize)(conv_2, training = use_dropout)
     conv_2 = BatchNormalization()(conv_2)
-    conv_2 = Activation('relu')(conv_2)
+    conv_2 = Activation('elu')(conv_2)
 
     pool_2 = MaxPooling2D((2,2))(conv_2)
 
     # second block of convolutions
-    conv_2 = Conv2D(inital_filter_size*2, (9,9), activation = None, kernel_initializer = 'he_normal', padding = 'same') (pool_2)
+    conv_2 = Conv2D(inital_filter_size*2, (9,9), activation = None, kernel_initializer = 'he_normal', padding = 'same', strides = (1,1))(pool_2)
     conv_2 = DropBlock2D(keep_prob = dropsize, block_size = blocksize)(conv_2, training = use_dropout)
     conv_2 = BatchNormalization()(conv_2)
-    conv_2 = Activation('relu')(conv_2)
+    conv_2 = Activation('elu')(conv_2)
 
-    conv_2 = Conv2D(inital_filter_size*2, (9,9), activation = None, kernel_initializer = 'he_normal', padding = 'same')(conv_2)
+    conv_2 = Conv2D(inital_filter_size*2, (9,9), activation = None, kernel_initializer = 'he_normal', padding = 'same', strides = (1,1))(conv_2)
     conv_2 = DropBlock2D(keep_prob = dropsize, block_size = blocksize)(conv_2, training = use_dropout)
     conv_2 = BatchNormalization()(conv_2)
-    conv_2 = Activation('relu')(conv_2)
+    conv_2 = Activation('elu')(conv_2)
 
     pool_2 = MaxPooling2D((2,2))(conv_2)
 
     # third block of convolutions
-    conv_2 = Conv2D(inital_filter_size*4, (9,9), activation = None, kernel_initializer = 'he_normal', padding = 'same') (pool_2)
+    conv_2 = Conv2D(inital_filter_size*4, (9,9), activation = None, kernel_initializer = 'he_normal', padding = 'same', strides = (1,1))(pool_2)
     conv_2 = DropBlock2D(keep_prob = dropsize, block_size = blocksize)(conv_2, training = use_dropout)
     conv_2 = BatchNormalization()(conv_2)
-    conv_2 = Activation('relu')(conv_2)
+    conv_2 = Activation('elu')(conv_2)
 
-    conv_2 = Conv2D(inital_filter_size*4, (9,9), activation = None, kernel_initializer = 'he_normal', padding = 'same')(conv_2)
+    conv_2 = Conv2D(inital_filter_size*4, (9,9), activation = None, kernel_initializer = 'he_normal', padding = 'same', strides = (1,1))(conv_2)
     conv_2 = DropBlock2D(keep_prob = dropsize, block_size = blocksize)(conv_2, training = use_dropout)
     conv_2 = BatchNormalization()(conv_2)
-    conv_2 = Activation('relu')(conv_2)
+    conv_2 = Activation('elu')(conv_2)
 
     pool_2 = MaxPooling2D((2,2))(conv_2)
 
@@ -110,7 +110,7 @@ def fully_connected_CNN_v2(use_dropout = False, height = 128, width = 128, chann
 
     flattened = tf.keras.layers.Flatten()(cat_layer)
 
-    d = Dense(1000)(flattened)
+    d = Dense(2048)(flattened)
     d = Activation('elu')(d)
     d = Dropout(0.1)(d, training = use_dropout)
 
@@ -394,8 +394,14 @@ class test_on_improved_val_loss(tf.keras.callbacks.Callback):
 
         if curr_val_loss <= np.min(val_loss_hist) or epoch == 0:
             print("val_loss improved to:",curr_val_loss)
+            loss_flag = True
+        else:
+            print("Earlystop:,", epoch - np.argmin(val_loss_hist))
+            loss_flag = False
 
-        if (epoch % 25) == 0:
+        if (epoch % 10) == 0 or loss_flag:
+
+            print('Testing on epoch', str(epoch))
 
             temp = np.load(os.path.join(curr_path,'data_arrays','test.npz'))
             X_test,X_meta_test,y_test = temp['X'],temp['X_meta'],temp['y']
@@ -406,7 +412,11 @@ class test_on_improved_val_loss(tf.keras.callbacks.Callback):
             # plt.figure(1)
             plt.close('all')
 
-            predicted = self.model.predict([X_test,X_meta_test],batch_size=1).squeeze()
+            predicted = []
+            for i in range(5):
+                predicted.append(self.model.predict([X_test,X_meta_test],batch_size=1).squeeze())
+            predicted = np.asarray(predicted)
+            predicted = np.mean(predicted,axis = 0)
 
             cor_matrix = np.corrcoef(predicted,y_test)
             cor_xy = cor_matrix[0,1]
@@ -423,7 +433,12 @@ class test_on_improved_val_loss(tf.keras.callbacks.Callback):
             plt.xlabel('Expected Age (years)')
             plt.ylabel('Predicted Age (years)')
 
-            output_name = os.path.join(curr_path,'output_images_testing_during',str(epoch) + '_' + str(r_squared)[2:] + '.png')
+            if loss_flag:
+                extn = 'best_'
+            else:
+                extn = ''
+
+            output_name = os.path.join(curr_path,'output_images_testing_during',extn + str(epoch) + '_' + str(r_squared)[2:] +'.png')
 
             plt.savefig(fname = output_name)
 

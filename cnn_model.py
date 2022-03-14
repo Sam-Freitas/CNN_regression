@@ -9,7 +9,7 @@ import tqdm
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import MinMaxScaler, LabelEncoder
 from natsort import natsorted, natsort_keygen
-from CNN_regression_model import fully_connected_CNN_v2, plot_model
+from CNN_regression_model import fully_connected_CNN_v2, plot_model,test_on_improved_val_loss
 from sklearn.preprocessing import PowerTransformer
 
 print('reading in metadata')
@@ -30,35 +30,48 @@ X_meta_all = np.concatenate((X_meta_train,X_meta_val))
 y_all = np.concatenate((y_train,y_val))
 num = X_train.shape[1]
 
-model = fully_connected_CNN_v2(height=X_train.shape[1],width=X_train.shape[2],use_dropout=True,inital_filter_size=32)
+inital_filter_size = 8
+dropsize = 0.85
+blocksize = 5
+
+model = fully_connected_CNN_v2(
+    height=X_train.shape[1],width=X_train.shape[2],
+    use_dropout=True,inital_filter_size=inital_filter_size,dropsize = dropsize,blocksize = blocksize
+    )
 plot_model(model)
 
 epochs = 10000
-batch_size = 256
+batch_size = 8
 
 save_checkpoints = tf.keras.callbacks.ModelCheckpoint(
-    filepath = 'model_weights/cp.ckpt', monitor = 'val_loss',
+    filepath = 'checkpoints/cp.ckpt', monitor = 'val_loss',
     mode = 'min',save_best_only = True,save_weights_only = True, verbose = 1)
 redule_lr = tf.keras.callbacks.ReduceLROnPlateau(
-    monitor = 'val_loss', factor = 0.9, patience = 40, min_lr = 0, verbose = 1)
-earlystop = tf.keras.callbacks.EarlyStopping(
-    monitor = 'val_loss',min_delta = 0,patience = 500, verbose = 1)
+    monitor = 'val_loss', factor = 0.1, patience = 250, min_lr = 0, verbose = 1)
+earlystop = tf.keras.callbacks.EarlyStopping(restore_best_weights=True,
+    monitor = 'val_loss',min_delta = 0,patience = 5000, verbose = 1)
+
+on_epoch_end = test_on_improved_val_loss()
+
 # optimizer = tf.keras.optimizers.RMSprop(momentum=0.75)#, momentum=0.9)
-optimizer = tf.keras.optimizers.Adam(learning_rate = 0.0001)
-model.compile(optimizer=optimizer,loss='MAE',metrics=['MSE'])
+optimizer = tf.keras.optimizers.Adam(learning_rate = 0.001)
+model.compile(optimizer=optimizer,loss='MeanSquaredError',metrics=['RootMeanSquaredError'])
 
 history = model.fit([X_train,X_meta_train],y_train,
     validation_data = ([X_val,X_meta_val],y_val),
     batch_size=batch_size,epochs=epochs,
-    callbacks=[earlystop,redule_lr],
+    callbacks=[earlystop,on_epoch_end,save_checkpoints,redule_lr],
     verbose=1)
 
 model.save_weights('model_weights/model_weights')
 
 del model
 
-model = fully_connected_CNN_v2(height=X_train.shape[1],width=X_train.shape[2],use_dropout=False,inital_filter_size=32)
-model.compile(optimizer=optimizer,loss='MAE',metrics=['MSE'])
+model = fully_connected_CNN_v2(
+    height=X_train.shape[1],width=X_train.shape[2],use_dropout=False,
+    inital_filter_size=inital_filter_size,dropsize = dropsize,blocksize = blocksize
+    )
+model.compile(optimizer=optimizer,loss='MeanSquaredError',metrics=['RootMeanSquaredError'])
 model.load_weights('model_weights/model_weights')
 
 eval_result = model.evaluate([X_test,X_meta_test],[y_test],batch_size=1,verbose=1,return_dict=True)
@@ -106,7 +119,7 @@ for this_key in list(history.history.keys()):
     plt.plot(b,label = this_key)
 
 plt.legend(loc="upper left")
-plt.ylim([0,50])
+plt.ylim([0,30])
 plt.title(json.dumps(res))
 plt.savefig(fname=  "training_history" + str(this_tissue).replace('/','-') + ".png")
 

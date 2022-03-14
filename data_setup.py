@@ -103,17 +103,21 @@ X_test = X_norm[test_idx]
 X_meta_test= X_meta_norm[test_idx]
 y_test = y_norm[test_idx]
 
-# # add adversarial data
-# np.random.seed(50)
-# X_rand1 = (np.random.rand(X_train.shape[0],X_train.shape[1]) - 0.5)/2
-# X_rand1 = X_train + X_rand1
-# np.random.seed(100)
-# X_rand2 = np.random.rand(X_train.shape[0],X_train.shape[1])
-# X_rand2 = X_train + X_rand2
+# add adversarial data
+np.random.seed(50)
+X_rand1 = np.random.rand(X_train.shape[1],X_train.shape[2])*2
+X_rand1 = X_train + X_rand1
+np.random.seed(100)
+X_rand2 = np.random.rand(X_train.shape[1],X_train.shape[2])
+X_rand2 = X_train + X_rand2
+np.random.seed(150)
+X_rand3 = np.random.rand(X_train.shape[0],X_train.shape[1],X_train.shape[2])*2
+X_rand3 = X_train + X_rand3
 
-# X_train = np.concatenate([X_train,X_rand1,X_rand2],axis = 0)
-# X_meta_train = np.concatenate([X_meta_train,X_meta_train,X_meta_train],axis = 0)
-# y_train = np.concatenate([y_train,y_train,y_train],axis = 0)
+
+X_train = np.concatenate([X_train,X_rand1,X_rand2,X_rand3],axis = 0)
+X_meta_train = np.concatenate([X_meta_train,X_meta_train,X_meta_train,X_meta_train],axis = 0)
+y_train = np.concatenate([y_train,y_train,y_train,y_train],axis = 0)
 
 # set up saving 
 to_save = os.path.split(__file__)[0]
