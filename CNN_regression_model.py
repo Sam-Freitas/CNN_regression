@@ -438,7 +438,7 @@ class test_on_improved_val_loss(tf.keras.callbacks.Callback):
             else:
                 extn = ''
 
-            output_name = os.path.join(curr_path,'output_images_testing_during',extn + str(epoch) + '_' + str(r_squared)[2:] +'.png')
+            output_name = os.path.join(curr_path,'output_images_testing_during',str(epoch) + '_' + str(r_squared)[2:] + extn +'.png')
 
             plt.savefig(fname = output_name)
 

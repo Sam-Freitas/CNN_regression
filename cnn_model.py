@@ -40,14 +40,14 @@ model = fully_connected_CNN_v2(
     )
 plot_model(model)
 
-epochs = 100
+epochs = 3000
 batch_size = 16
 
 save_checkpoints = tf.keras.callbacks.ModelCheckpoint(
     filepath = 'checkpoints/cp.ckpt', monitor = 'val_loss',
     mode = 'min',save_best_only = True,save_weights_only = True, verbose = 1)
 redule_lr = tf.keras.callbacks.ReduceLROnPlateau(
-    monitor = 'val_loss', factor = 0.1, patience = 250, min_lr = 0, verbose = 1)
+    monitor = 'val_loss', factor = 0.1, patience = 1000, min_lr = 0, verbose = 1)
 earlystop = tf.keras.callbacks.EarlyStopping(restore_best_weights=False,
     monitor = 'val_loss',min_delta = 0,patience = 5000, verbose = 1)
 
