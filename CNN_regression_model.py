@@ -28,23 +28,17 @@ def fully_connected_CNN_v2(use_dropout = False, height = 128, width = 128, chann
 
     s = inputs
 
-    # first block of convolutions
     for i in range(3):
+        # first block of convolutions
         filt_mult = 2**i
         if i == 0:
-            conv_3 = Conv2D(inital_filter_size*filt_mult, (3,3), activation = None, kernel_initializer = 'he_normal', padding = 'same', strides = (1,1))(s)
+            conv_1 = Conv2D(inital_filter_size*filt_mult, (15,15), activation = None, kernel_initializer = 'he_normal', padding = 'same', strides = (1,1))(s)
         else:
-            conv_3 = Conv2D(inital_filter_size*filt_mult, (3,3), activation = None, kernel_initializer = 'he_normal', padding = 'same', strides = (1,1))(pool_3)
-        conv_3 = DropBlock2D(keep_prob = dropsize, block_size = blocksize)(conv_3, training = use_dropout)
-        # conv_3 = BatchNormalization()(conv_3)
-        conv_3 = Activation('elu')(conv_3)
+            conv_1 = Conv2D(inital_filter_size*filt_mult, (15,15), activation = None, kernel_initializer = 'he_normal', padding = 'same', strides = (1,1))(pool_1)
+        conv_1 = DropBlock2D(keep_prob = dropsize, block_size = blocksize)(conv_1, training = use_dropout)
+        conv_1 = Activation('elu')(conv_1)
 
-        conv_3 = Conv2D(inital_filter_size*filt_mult, (3,3), activation = None, kernel_initializer = 'he_normal', padding = 'same', strides = (1,1))(conv_3)
-        conv_3 = DropBlock2D(keep_prob = dropsize, block_size = blocksize)(conv_3, training = use_dropout)
-        # conv_3 = BatchNormalization()(conv_3)
-        conv_3 = Activation('elu')(conv_3)
-
-        pool_3 = MaxPooling2D((2,2))(conv_3)
+        pool_1 = MaxPooling2D((2,2))(conv_1)
 
     for i in range(3):
         # first block of convolutions
@@ -54,21 +48,27 @@ def fully_connected_CNN_v2(use_dropout = False, height = 128, width = 128, chann
         else:
             conv_2 = Conv2D(inital_filter_size*filt_mult, (9,9), activation = None, kernel_initializer = 'he_normal', padding = 'same', strides = (1,1))(pool_2)
         conv_2 = DropBlock2D(keep_prob = dropsize, block_size = blocksize)(conv_2, training = use_dropout)
-        # conv_2 = BatchNormalization()(conv_2)
-        conv_2 = Activation('elu')(conv_2)
-
-        conv_2 = Conv2D(inital_filter_size*filt_mult, (9,9), activation = None, kernel_initializer = 'he_normal', padding = 'same', strides = (1,1))(conv_2)
-        conv_2 = DropBlock2D(keep_prob = dropsize, block_size = blocksize)(conv_2, training = use_dropout)
-        # conv_2 = BatchNormalization()(conv_2)
         conv_2 = Activation('elu')(conv_2)
 
         pool_2 = MaxPooling2D((2,2))(conv_2)
 
-    cat_layer = tf.keras.layers.Add()([pool_2,pool_3])
+    # first block of convolutions
+    for i in range(3):
+        filt_mult = 2**i
+        if i == 0:
+            conv_3 = Conv2D(inital_filter_size*filt_mult, (3,3), activation = None, kernel_initializer = 'he_normal', padding = 'same', strides = (1,1))(s)
+        else:
+            conv_3 = Conv2D(inital_filter_size*filt_mult, (3,3), activation = None, kernel_initializer = 'he_normal', padding = 'same', strides = (1,1))(pool_3)
+        conv_3 = DropBlock2D(keep_prob = dropsize, block_size = blocksize)(conv_3, training = use_dropout)
+        conv_3 = Activation('elu')(conv_3)
+
+        pool_3 = MaxPooling2D((2,2))(conv_3)
+
+    cat_layer = tf.keras.layers.Concatenate()([pool_1,pool_2,pool_3])
 
     flattened = tf.keras.layers.Flatten()(cat_layer)
 
-    d = Dense(2048)(flattened)
+    d = Dense(6000)(flattened)
     d = Activation('elu')(d)
     d = Dropout(0.1)(d, training = use_dropout)
 
@@ -83,7 +83,7 @@ def fully_connected_CNN_v2(use_dropout = False, height = 128, width = 128, chann
     out_concat = tf.keras.layers.Add()([d_output,dm_output])
 
     # final output layes for data exportation
-    output = Dense(1,activation='linear',name = 'coninious_output')(out_concat)
+    output = Dense(1,activation='relu',name = 'coninious_output')(out_concat)
 
     model = Model(inputs=[inputs,inputs_metadata], outputs=[output])
 
@@ -350,7 +350,7 @@ class test_on_improved_val_loss(tf.keras.callbacks.Callback):
                 shutil.rmtree(os.path.join(curr_path, 'output_images_testing_during'))
                 os.mkdir(os.path.join(curr_path, 'output_images_testing_during'))
 
-        if curr_val_loss <= np.min(val_loss_hist) or epoch == 0:
+        if curr_val_loss < np.min(val_loss_hist) or epoch == 0:
             print("val_loss improved to:",curr_val_loss)
             loss_flag = True
         else:

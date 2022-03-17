@@ -41,16 +41,16 @@ print('Setting up model')
 model = fully_connected_dense_model(num_features = num, num_cat = num_bins,use_dropout=True,dropout_amount = 0.1)
 plot_model(model)
 
-epochs = 10000
+epochs = 500
 batch_size = 1024
 
 save_checkpoints = tf.keras.callbacks.ModelCheckpoint(
     filepath = 'dense_regression/checkpoint/cp.ckpt', monitor = 'val_loss',
     mode = 'min',save_best_only = True,save_weights_only = True, verbose = 1)
 redule_lr = tf.keras.callbacks.ReduceLROnPlateau(
-    monitor = 'val_loss', factor = 0.9, patience = 200, min_lr = 0, verbose = 1)
+    monitor = 'val_loss', factor = 0.9, patience = 40, min_lr = 0, verbose = 1)
 earlystop = tf.keras.callbacks.EarlyStopping(
-    monitor = 'val_loss',min_delta = 0,patience = 1000, verbose = 1)
+    monitor = 'val_loss',min_delta = 0,patience = 500, verbose = 1)
 on_epoch_end = test_on_improved_val_loss()
 
 optimizer = tf.keras.optimizers.Adam(learning_rate=0.0001)

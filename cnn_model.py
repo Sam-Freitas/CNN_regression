@@ -30,7 +30,7 @@ X_meta_all = np.concatenate((X_meta_train,X_meta_val))
 y_all = np.concatenate((y_train,y_val))
 num = X_train.shape[1]
 
-inital_filter_size = 8
+inital_filter_size = 16
 dropsize = 0.85
 blocksize = 5
 
@@ -40,21 +40,21 @@ model = fully_connected_CNN_v2(
     )
 plot_model(model)
 
-epochs = 3000
-batch_size = 16
+epochs = 10000
+batch_size = 256
 
 save_checkpoints = tf.keras.callbacks.ModelCheckpoint(
     filepath = 'checkpoints/cp.ckpt', monitor = 'val_loss',
     mode = 'min',save_best_only = True,save_weights_only = True, verbose = 1)
 redule_lr = tf.keras.callbacks.ReduceLROnPlateau(
-    monitor = 'val_loss', factor = 0.1, patience = 1000, min_lr = 0, verbose = 1)
+    monitor = 'val_loss', factor = 0.9, patience = 100, min_lr = 0, verbose = 1)
 earlystop = tf.keras.callbacks.EarlyStopping(restore_best_weights=False,
-    monitor = 'val_loss',min_delta = 0,patience = 5000, verbose = 1)
+    monitor = 'val_loss',min_delta = 0,patience = 500, verbose = 1)
 
 on_epoch_end = test_on_improved_val_loss()
 
 # optimizer = tf.keras.optimizers.RMSprop(momentum=0.75)#, momentum=0.9)
-optimizer = tf.keras.optimizers.Adam(learning_rate = 0.001)
+optimizer = tf.keras.optimizers.Adam(learning_rate = 0.0001)
 model.compile(optimizer=optimizer,loss='MeanSquaredError',metrics=['RootMeanSquaredError'])
 
 history = model.fit([X_train,X_meta_train],y_train,
