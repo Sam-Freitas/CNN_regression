@@ -21,6 +21,52 @@ import sys
 import cv2
 import os
 
+def fully_connected_CNN_v3(use_dropout = False, height = 128, width = 128, channels = 1, kernal_size = (3,3), inital_filter_size = 16,dropsize = 0.9,blocksize = 7):
+
+    inputs = Input((height, width, channels))
+
+    s = inputs
+
+    # first block of convolutions
+    for i in range(3):
+        filt_mult = 2**i
+        if i == 0:
+            conv_3 = Conv2D(inital_filter_size*filt_mult, (3,3), activation = None, kernel_initializer = 'he_normal', padding = 'same', strides = (1,1))(s)
+        else:
+            conv_3 = Conv2D(inital_filter_size*filt_mult, (3,3), activation = None, kernel_initializer = 'he_normal', padding = 'same', strides = (1,1))(pool_3)
+        conv_3 = DropBlock2D(keep_prob = dropsize, block_size = blocksize)(conv_3, training = use_dropout)
+        conv_3 = Activation('elu')(conv_3)
+
+        for j in range(3):
+            conv_3 = Conv2D(inital_filter_size*filt_mult, (3,3), activation = None, kernel_initializer = 'he_normal', padding = 'same', strides = (1,1))(conv_3)
+            # conv_3 = DropBlock2D(keep_prob = dropsize, block_size = blocksize)(conv_3, training = use_dropout)
+            conv_3 = Activation('elu')(conv_3)
+
+        pool_3 = MaxPooling2D((2,2))(conv_3)
+
+    flattened = tf.keras.layers.Flatten()(pool_3)
+
+    d = Dense(6000)(flattened)
+    d = Activation('elu')(d)
+    d = Dropout(0.1)(d, training = use_dropout)
+
+    d_output = Dense(1,activation='linear')(d)
+
+    inputs_metadata = Input(shape = (2,)) # sex, tissue type
+    sm = Dense(512,input_shape = inputs_metadata.shape)(inputs_metadata)
+    dm = Activation('elu')(sm)
+    dm_output = Dense(1,activation='linear')(dm)
+
+    #concatinations
+    out_concat = tf.keras.layers.Add()([d_output,dm_output])
+
+    # final output layes for data exportation
+    output = Dense(1,activation='linear',name = 'continious_output')(out_concat)
+    # output = tf.keras.layers.ReLU()(output)
+
+    model = Model(inputs=[inputs,inputs_metadata], outputs=[output])
+
+    return model
 
 def fully_connected_CNN_v2(use_dropout = False, height = 128, width = 128, channels = 1, kernal_size = (3,3), inital_filter_size = 16,dropsize = 0.9,blocksize = 7):
 
@@ -83,7 +129,8 @@ def fully_connected_CNN_v2(use_dropout = False, height = 128, width = 128, chann
     out_concat = tf.keras.layers.Add()([d_output,dm_output])
 
     # final output layes for data exportation
-    output = Dense(1,activation='relu',name = 'coninious_output')(out_concat)
+    output = Dense(1,activation='linear',name = 'continious_output')(out_concat)
+    # output = tf.keras.layers.ReLU()(output)
 
     model = Model(inputs=[inputs,inputs_metadata], outputs=[output])
 

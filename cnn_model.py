@@ -9,7 +9,7 @@ import tqdm
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import MinMaxScaler, LabelEncoder
 from natsort import natsorted, natsort_keygen
-from CNN_regression_model import fully_connected_CNN_v2, plot_model,test_on_improved_val_loss
+from CNN_regression_model import fully_connected_CNN_v2, fully_connected_CNN_v3,plot_model,test_on_improved_val_loss
 from sklearn.preprocessing import PowerTransformer
 
 print('reading in metadata')
@@ -30,24 +30,24 @@ X_meta_all = np.concatenate((X_meta_train,X_meta_val))
 y_all = np.concatenate((y_train,y_val))
 num = X_train.shape[1]
 
-inital_filter_size = 16
+inital_filter_size = 8
 dropsize = 0.85
 blocksize = 5
 
-model = fully_connected_CNN_v2(
+model = fully_connected_CNN_v3(
     height=X_train.shape[1],width=X_train.shape[2],
     use_dropout=True,inital_filter_size=inital_filter_size,dropsize = dropsize,blocksize = blocksize
     )
 plot_model(model)
 
 epochs = 10000
-batch_size = 256
+batch_size = 320
 
 save_checkpoints = tf.keras.callbacks.ModelCheckpoint(
     filepath = 'checkpoints/cp.ckpt', monitor = 'val_loss',
     mode = 'min',save_best_only = True,save_weights_only = True, verbose = 1)
 redule_lr = tf.keras.callbacks.ReduceLROnPlateau(
-    monitor = 'val_loss', factor = 0.9, patience = 100, min_lr = 0, verbose = 1)
+    monitor = 'val_loss', factor = 0.9, patience = 40, min_lr = 0, verbose = 1)
 earlystop = tf.keras.callbacks.EarlyStopping(restore_best_weights=False,
     monitor = 'val_loss',min_delta = 0,patience = 500, verbose = 1)
 

@@ -62,9 +62,14 @@ X_meta = np.asarray(X_meta)
 X_norm = X 
 y_norm = y
 
+X_meta_cleaned = X_meta.copy()
+for i in range(X_meta_cleaned.shape[0]):
+    temp_meta = X_meta[i][1].lower()
+    X_meta_cleaned[i][1] = temp_meta.replace('/','-')
+
 le = LabelEncoder()
-X_meta_norm = np.zeros(shape=X_meta.shape)
-for count,this_feature in enumerate(X_meta.transpose()):
+X_meta_norm = np.zeros(shape=X_meta_cleaned.shape)
+for count,this_feature in enumerate(X_meta_cleaned.transpose()):
     X_meta_norm[:,count] = le.fit_transform(this_feature)
 
 val_idx = []

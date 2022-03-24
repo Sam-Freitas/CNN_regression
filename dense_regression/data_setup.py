@@ -14,6 +14,8 @@ from scipy import stats
 from scipy.spatial.distance import correlation as dist_corr_eucl
 from numpy.polynomial import Polynomial
 from sklearn.model_selection import train_test_split
+from sklearn.decomposition import PCA
+from sklearn.cluster import KMeans
 import random
 # from minepy.mine import MINE
 
@@ -82,10 +84,16 @@ print('parsing data')
 # this_tissue = 'Blood;PBMC'
 this_tissue = 'All_tissues'
 healthy_index = metadata['Healthy'].values == True
-tissue_index = metadata['Tissue'].values == this_tissue
+tissue_index = healthy_index.copy()
+for count,temp in enumerate(metadata['Tissue'].values):
+    if temp.__contains__('Retina'):
+        tissue_index[count] = False
+    else:
+        tissue_index[count] = True
+# tissue_index = metadata['Tissue'].values == this_tissue
 age_index = metadata['Age'].values > 14
 
-single_tissue_index = healthy_index*age_index#*tissue_index
+single_tissue_index = healthy_index*age_index*tissue_index
 data = data.iloc[single_tissue_index,:]
 metadata_healthy = metadata.iloc[single_tissue_index,:]
 
@@ -132,12 +140,51 @@ X_norm = X_raw
 # X_norm = X_raw
 y_norm = y_raw
 
+X_meta_cleaned = X_meta_raw.copy()
+for i in range(X_meta_cleaned.shape[0]):
+    temp_meta = X_meta_raw[i][1].lower()
+    X_meta_cleaned[i][1] = temp_meta.replace('/','-')
+
 le = LabelEncoder()
-X_meta_norm = np.zeros(shape=X_meta_raw.shape)
-for count,this_feature in enumerate(X_meta_raw.transpose()):
+X_meta_norm = np.zeros(shape=X_meta_cleaned.shape)
+for count,this_feature in enumerate(X_meta_cleaned.transpose()):
     X_meta_norm[:,count] = le.fit_transform(this_feature)
 
 # X_norm,X_test,y_norm,y_test = train_test_split(X_norm,y_norm,test_size = 0.1,random_state = 50)
+
+# PCA GOES HERE
+labels = X_meta_norm[:,1]
+label_names = X_meta_cleaned[:,1]
+pca = PCA(n_components = 13)
+X_train_pca = pca.fit_transform(X_norm)
+
+pca = PCA(n_components=None)
+X_train_pca_var = pca.fit_transform(X_norm)
+variance_ratio = pca.explained_variance_ratio_
+variance_ratio_cumsum = np.cumsum(variance_ratio)
+
+k = KMeans(n_clusters = 10).fit(X_train_pca)
+k_labels = k.labels_
+
+label_names = X_meta_cleaned[:,1]
+groupings = []
+for i in range(len(np.unique(k_labels))):
+    print('Group: ' + str(i), ',' , 'n=' + str(np.sum(k_labels==i)))
+    print(np.unique(label_names[k_labels==i]))
+    groupings.append(np.unique(label_names[k_labels==i]))
+
+plt.figure()
+for count,g in enumerate(np.unique(k_labels)):
+    idx = (k_labels == g)
+    plt.scatter(X_train_pca[idx,1],X_train_pca[idx,2], cmap = 'hsv', label = groupings[count])
+plt.legend()
+
+plt.figure()
+for count,g in enumerate(np.unique(k_labels)):
+    idx = (k_labels == g)
+    plt.scatter(X_train_pca[idx,0],X_train_pca[idx,1], cmap = 'hsv', label = groupings[count])
+plt.legend()
+
 
 val_idx = []
 not_enough_data_idx = []
