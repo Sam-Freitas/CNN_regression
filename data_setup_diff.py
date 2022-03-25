@@ -49,11 +49,11 @@ for count in tqdm(range(len(imgs_list))):
     srr_id = os.path.basename(this_img)[1:-9]
     this_imgs_meta_idx = (SRR_values == srr_id)
     this_metadata = metadata_healthy.iloc[this_imgs_meta_idx,:]
-    # if (this_metadata['Tissue'].values == this_tissue).squeeze():
-    y.append(metadata_healthy.iloc[this_imgs_meta_idx,:]['Age'].values.squeeze())
-    temp_img = np.loadtxt(this_img, comments='#',delimiter="\t",unpack=False)
-    X.append((temp_img - np.min(temp_img))/(np.max(temp_img) - np.min(temp_img)))#/np.max(temp_img))
-    X_meta.append([str(this_metadata['Gender'].values.squeeze()),str(this_metadata['Tissue'].values.squeeze())])
+    if (this_metadata['Tissue'].values == this_tissue).squeeze():
+        y.append(metadata_healthy.iloc[this_imgs_meta_idx,:]['Age'].values.squeeze())
+        temp_img = np.loadtxt(this_img, comments='#',delimiter="\t",unpack=False)
+        X.append((temp_img - np.min(temp_img))/(np.max(temp_img) - np.min(temp_img)))#/np.max(temp_img))
+        X_meta.append([str(this_metadata['Gender'].values.squeeze()),str(this_metadata['Tissue'].values.squeeze())])
 
 del count,this_img,temp_img
 X = np.asarray(X)
@@ -73,37 +73,39 @@ X_meta_norm = np.zeros(shape=X_meta_cleaned.shape)
 for count,this_feature in enumerate(X_meta_cleaned.transpose()):
     X_meta_norm[:,count] = le.fit_transform(this_feature)
 
-# y_diff = []
-# X_diff = []
-# count = 0
-# for i in range(len(y)):
-#     X1 = X_norm[i]
-#     y1 = y_norm[i]
-#     for j in range(len(y)):
-#         X2 = X_norm[j]
-#         y2 = y_norm[j]
-#         X_diff.append(np.concatenate([np.atleast_3d(X1),np.atleast_3d(X2)],axis = -1))
-#         y_diff.append((y1-y2)/np.max([y1,y2]))
-#         print(count)
-#         count = count + 1
-# X_diff = np.asarray(X_diff)
-# y_diff = np.asarray(y_diff)
+y_diff = []
+X_diff = []
+count = 0
+for i in range(len(y)):
+    X1 = X_norm[i]
+    y1 = y_norm[i]
+    for j in range(len(y)):
+        X2 = X_norm[j]
+        y2 = y_norm[j]
+        X_diff.append(np.concatenate([np.atleast_3d(X1),np.atleast_3d(X2)],axis = -1))
+        y_temp = (y1-y2)/np.max([y1,y2])
+        y_temp = np.round(y_temp,3)
+        y_diff.append(y_temp)
+        print(count)
+        count = count + 1
+X_diff = np.asarray(X_diff)
+y_diff = np.asarray(y_diff)
 
 val_idx = []
 not_enough_data_idx = []
-for unique_num in np.unique(y_norm): #[0::2]:
-    indices = np.where(y_norm==unique_num)
+for unique_num in np.unique(y_diff): #[0::2]:
+    indices = np.where(y_diff==unique_num)
     if indices[0].shape[0] > 10:
-        val_idx.extend(np.where(y_norm==unique_num)[0][0:5])
+        val_idx.extend(np.where(y_diff==unique_num)[0][0:5])
     elif indices[0].shape[0] > 1:
         num_to_exd = round(indices[0].shape[0]/2)
-        val_idx.extend(np.where(y_norm==unique_num)[0][0:num_to_exd])
+        val_idx.extend(np.where(y_diff==unique_num)[0][0:num_to_exd])
     else:
         not_enough_data_idx.append(unique_num)
 val_idx = np.asarray(val_idx)
 not_enough_data_values = np.asarray(not_enough_data_idx)
 
-train_idx = np.arange(y_norm.shape[0])
+train_idx = np.arange(y_diff.shape[0])
 train_idx = np.delete(train_idx,val_idx)
 
 np.random.seed(50)
@@ -113,33 +115,30 @@ train_idx = np.delete(train_idx,test_idx)
 test_idx = temp
 
 # training data
-X_train = X_norm[train_idx]
-X_meta_train = X_meta_norm[train_idx]
-y_train = y_norm[train_idx]
+X_train = X_diff[train_idx]
+y_train = y_diff[train_idx]
 # validation data
-X_val = X_norm[val_idx]
-X_meta_val = X_meta_norm[val_idx]
-y_val = y_norm[val_idx]
+X_val = X_diff[val_idx]
+y_val = y_diff[val_idx]
 # test data
-X_test = X_norm[test_idx]
-X_meta_test= X_meta_norm[test_idx]
-y_test = y_norm[test_idx]
+X_test = X_diff[test_idx]
+y_test = y_diff[test_idx]
 
-# add adversarial data
-np.random.seed(50)
-X_rand1 = np.random.rand(X_train.shape[1],X_train.shape[2])*2
-X_rand1 = X_train + X_rand1
-np.random.seed(100)
-X_rand2 = np.random.rand(X_train.shape[1],X_train.shape[2])
-X_rand2 = X_train + X_rand2
-np.random.seed(150)
-X_rand3 = np.random.rand(X_train.shape[0],X_train.shape[1],X_train.shape[2])*2
-X_rand3 = X_train + X_rand3
+# # add adversarial data
+# np.random.seed(50)
+# X_rand1 = np.random.rand(X_train.shape[1],X_train.shape[2])*2
+# X_rand1 = X_train + X_rand1
+# np.random.seed(100)
+# X_rand2 = np.random.rand(X_train.shape[1],X_train.shape[2])
+# X_rand2 = X_train + X_rand2
+# np.random.seed(150)
+# X_rand3 = np.random.rand(X_train.shape[0],X_train.shape[1],X_train.shape[2])*2
+# X_rand3 = X_train + X_rand3
 
 
-X_train = np.concatenate([X_train,X_rand1,X_rand2,X_rand3],axis = 0)
-X_meta_train = np.concatenate([X_meta_train,X_meta_train,X_meta_train,X_meta_train],axis = 0)
-y_train = np.concatenate([y_train,y_train,y_train,y_train],axis = 0)
+# X_train = np.concatenate([X_train,X_rand1,X_rand2,X_rand3],axis = 0)
+# X_meta_train = np.concatenate([X_meta_train,X_meta_train,X_meta_train,X_meta_train],axis = 0)
+# y_train = np.concatenate([y_train,y_train,y_train,y_train],axis = 0)
 
 # set up saving 
 to_save = os.path.split(__file__)[0]
@@ -149,12 +148,12 @@ save_path = os.path.join(to_save,save_dir)
 os.makedirs(save_path, exist_ok = True)
 
 train_save_path = os.path.join(save_path,'train')
-np.savez(train_save_path,X = X_train,X_meta = X_meta_train,y = y_train)
+np.savez(train_save_path,X = X_train,y = y_train)
 
 val_save_path = os.path.join(save_path,'val')
-np.savez(val_save_path,X = X_val,X_meta = X_meta_val,y = y_val)
+np.savez(val_save_path,X = X_val,y = y_val)
 
 test_save_path = os.path.join(save_path,'test')
-np.savez(test_save_path,X = X_test,X_meta = X_meta_test,y = y_test)
+np.savez(test_save_path,X = X_test,y = y_test)
 
 print('eof')

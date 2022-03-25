@@ -21,7 +21,7 @@ import sys
 import cv2
 import os
 
-def fully_connected_CNN_v3(use_dropout = False, height = 128, width = 128, channels = 1, kernal_size = (3,3), inital_filter_size = 16,dropsize = 0.9,blocksize = 7):
+def fully_connected_CNN_v3(use_dropout = False, height = 128, width = 128, channels = 2, kernal_size = (3,3), inital_filter_size = 16,dropsize = 0.9,blocksize = 7):
 
     inputs = Input((height, width, channels))
 
@@ -46,25 +46,13 @@ def fully_connected_CNN_v3(use_dropout = False, height = 128, width = 128, chann
 
     flattened = tf.keras.layers.Flatten()(pool_3)
 
-    d = Dense(6000)(flattened)
+    d = Dense(1000)(flattened)
     d = Activation('elu')(d)
     d = Dropout(0.1)(d, training = use_dropout)
 
-    d_output = Dense(1,activation='linear')(d)
+    output = Dense(1,activation='linear')(d)
 
-    inputs_metadata = Input(shape = (2,)) # sex, tissue type
-    sm = Dense(512,input_shape = inputs_metadata.shape)(inputs_metadata)
-    dm = Activation('elu')(sm)
-    dm_output = Dense(1,activation='linear')(dm)
-
-    #concatinations
-    out_concat = tf.keras.layers.Add()([d_output,dm_output])
-
-    # final output layes for data exportation
-    output = Dense(1,activation='linear',name = 'continious_output')(out_concat)
-    # output = tf.keras.layers.ReLU()(output)
-
-    model = Model(inputs=[inputs,inputs_metadata], outputs=[output])
+    model = Model(inputs=[inputs], outputs=[output])
 
     return model
 
@@ -420,6 +408,77 @@ class test_on_improved_val_loss(tf.keras.callbacks.Callback):
             predicted = []
             for i in range(5):
                 predicted.append(self.model.predict([X_test,X_meta_test],batch_size=1).squeeze())
+            predicted = np.asarray(predicted)
+            predicted = np.mean(predicted,axis = 0)
+
+            cor_matrix = np.corrcoef(predicted,y_test)
+            cor_xy = cor_matrix[0,1]
+            r_squared = round(cor_xy**2,4)
+            print("Current r_squared test:",r_squared)
+
+            res = dict()
+            for key in eval_result: res[key] = round(eval_result[key],6)
+
+            plt.scatter(y_test,predicted,color = 'r',alpha=0.2)
+            plt.plot(np.linspace(np.min(y_test), np.max(y_test)),np.linspace(np.min(y_test), np.max(y_test)))
+            plt.text(np.min(y_test),np.max(y_test),"r^2: " + str(r_squared),fontsize = 12)
+            plt.title(json.dumps(res).replace(',', '\n'),fontsize = 10)
+            plt.xlabel('Expected Age (years)')
+            plt.ylabel('Predicted Age (years)')
+
+            if loss_flag:
+                extn = 'best_'
+            else:
+                extn = ''
+
+            output_name = os.path.join(curr_path,'output_images_testing_during',str(epoch) + '_' + str(r_squared)[2:] + extn +'.png')
+
+            plt.savefig(fname = output_name)
+
+            plt.close('all')
+
+
+class test_on_improved_val_lossv3(tf.keras.callbacks.Callback):
+    def on_epoch_end(self, epoch, logs=None):
+
+        curr_path = os.path.split(__file__)[0]
+
+        curr_val_loss = logs['val_loss']
+        try:
+            val_loss_hist = self.model.history.history['val_loss']
+        except:
+            val_loss_hist = curr_val_loss + 1
+
+        if epoch == 0:
+            try:
+                os.mkdir(os.path.join(curr_path, 'output_images_testing_during'))
+            except:
+                shutil.rmtree(os.path.join(curr_path, 'output_images_testing_during'))
+                os.mkdir(os.path.join(curr_path, 'output_images_testing_during'))
+
+        if curr_val_loss < np.min(val_loss_hist) or epoch == 0:
+            print("val_loss improved to:",curr_val_loss)
+            loss_flag = True
+        else:
+            print("Earlystop:,", epoch - np.argmin(val_loss_hist))
+            loss_flag = False
+
+        if (epoch % 10) == 0 or loss_flag:
+
+            print('Testing on epoch', str(epoch))
+
+            temp = np.load(os.path.join(curr_path,'data_arrays','test.npz'))
+            X_test,y_test = temp['X'],temp['y']
+
+            eval_result = self.model.evaluate([X_test],[y_test],batch_size=1,verbose=0,return_dict=True)
+            print(eval_result)
+
+            # plt.figure(1)
+            plt.close('all')
+
+            predicted = []
+            for i in range(5):
+                predicted.append(self.model.predict([X_test],batch_size=1).squeeze())
             predicted = np.asarray(predicted)
             predicted = np.mean(predicted,axis = 0)
 
