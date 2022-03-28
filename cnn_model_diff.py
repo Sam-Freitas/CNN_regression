@@ -56,6 +56,8 @@ on_epoch_end = test_on_improved_val_lossv3()
 optimizer = tf.keras.optimizers.Adam(learning_rate = 0.00001)
 model.compile(optimizer=optimizer,loss='MeanSquaredError',metrics=['RootMeanSquaredError'])
 
+model.load_weights('checkpoints/cp.ckpt')
+
 history = model.fit([X_train],y_train,
     validation_data = ([X_val],y_val),
     batch_size=batch_size,epochs=epochs,
@@ -103,7 +105,7 @@ plt.scatter(y_test,predicted_test,color = 'b',alpha=0.3, label = 'testing data')
 plt.plot(np.linspace(np.min(y_all), np.max(y_all)),np.linspace(np.min(y_all), np.max(y_all)))
 
 plt.text(np.min(y_all),np.max(y_all),"r^2: " + str(r_squared_train),fontsize = 12, color = 'r')
-plt.text(np.min(y_all),np.max(y_all)-5,"r^2: " + str(r_squared_test),fontsize = 12, color = 'b')
+plt.text(np.min(y_all),np.max(y_all)-0.2,"r^2: " + str(r_squared_test),fontsize = 12, color = 'b')
 
 plt.legend(loc = 'upper center')
 plt.title(json.dumps(res).replace(',','\n'),fontsize = 10)
@@ -164,7 +166,7 @@ plt.scatter(y_test,predicted_test,color = 'b',alpha=0.3, label = 'testing data')
 plt.plot(np.linspace(np.min(y_all), np.max(y_all)),np.linspace(np.min(y_all), np.max(y_all)))
 
 plt.text(np.min(y_all),np.max(y_all),"r^2: " + str(r_squared_train),fontsize = 12, color = 'r')
-plt.text(np.min(y_all),np.max(y_all)-5,"r^2: " + str(r_squared_test),fontsize = 12, color = 'b')
+plt.text(np.min(y_all),np.max(y_all)-0.2,"r^2: " + str(r_squared_test),fontsize = 12, color = 'b')
 
 plt.legend(loc = 'upper center')
 plt.title(json.dumps(res).replace(',','\n'),fontsize = 10)
