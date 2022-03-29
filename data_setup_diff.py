@@ -20,7 +20,7 @@ import random
 this_tissue = 'All_tissues'
 
 print('loading in data')
-data_path = '/groups/sutphin/NN_trainings/IGTD/Results/All_tissues_1_9620/data'
+data_path = '/groups/sutphin/NN_trainings/IGTD/Results/Liver;liver hepatocytes_1_9620/data'
 metadata_path = '/home/u23/samfreitas/NN_trainings/CNN_regression/dense_regression/meta_filtered.csv'
 imgs_list = natsorted(glob.glob(os.path.join(data_path,'*.txt')))
 metadata = pd.read_csv(metadata_path)

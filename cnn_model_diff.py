@@ -39,7 +39,7 @@ model = fully_connected_CNN_v3(
     )
 plot_model(model)
 
-epochs = 10000
+epochs = 25000
 batch_size = 320
 
 save_checkpoints = tf.keras.callbacks.ModelCheckpoint(
@@ -60,7 +60,7 @@ model.load_weights('checkpoints/cp.ckpt')
 
 history = model.fit([X_train],y_train,
     validation_data = ([X_val],y_val),
-    batch_size=batch_size,epochs=epochs,
+    batch_size=batch_size,epochs=epochs, initial_epoch = 6472,
     callbacks=[earlystop,on_epoch_end,save_checkpoints],
     verbose=1)
 
