@@ -19,8 +19,10 @@ import random
 
 this_tissue = 'All_tissues'
 
+age_normalizer = 128
 print('loading in data')
 data_path = '/groups/sutphin/NN_trainings/IGTD/Results/Liver;liver hepatocytes_1_9620/data'
+data_path = '/groups/sutphin/NN_trainings/IGTD/Results/All_tissues_1_9620/data'
 metadata_path = '/home/u23/samfreitas/NN_trainings/CNN_regression/dense_regression/meta_filtered.csv'
 imgs_list = natsorted(glob.glob(os.path.join(data_path,'*.txt')))
 metadata = pd.read_csv(metadata_path)
@@ -83,7 +85,7 @@ for i in range(len(y)):
         X2 = X_norm[j]
         y2 = y_norm[j]
         X_diff.append(np.concatenate([np.atleast_3d(X1),np.atleast_3d(X2)],axis = -1))
-        y_temp = (y1-y2)/np.max([y1,y2])
+        y_temp = (y1-y2)/age_normalizer
         y_temp = np.round(y_temp,3)
         y_diff.append(y_temp)
         print(count)
