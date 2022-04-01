@@ -35,11 +35,13 @@ blocksize = 5
 
 model = fully_connected_CNN_v3(
     height=X_train.shape[1],width=X_train.shape[2],
-    use_dropout=True,inital_filter_size=inital_filter_size,dropsize = dropsize,blocksize = blocksize
+    use_dropout=True,inital_filter_size=inital_filter_size,dropsize = dropsize,blocksize = blocksize,
+    layers = 5, sub_layers = 5
     )
 plot_model(model)
 
-epochs = 30000
+# epochs = 15000
+epochs = 15000
 batch_size = 320
 
 save_checkpoints = tf.keras.callbacks.ModelCheckpoint(
@@ -48,7 +50,7 @@ save_checkpoints = tf.keras.callbacks.ModelCheckpoint(
 redule_lr = tf.keras.callbacks.ReduceLROnPlateau(
     monitor = 'val_loss', factor = 0.9, patience = 40, min_lr = 0, verbose = 1)
 earlystop = tf.keras.callbacks.EarlyStopping(restore_best_weights=False,
-    monitor = 'val_loss',min_delta = 0,patience = 1000, verbose = 1)
+    monitor = 'val_loss',min_delta = 0,patience = 500, verbose = 1)
 
 on_epoch_end = test_on_improved_val_lossv3()
 

@@ -17,6 +17,30 @@ import sys
 import cv2
 import os
 
+def fully_connected_dense_modelv2(num_features = 2048, use_dropout = False, dropout_amount = 0.8):
+    
+    # rna-seq data input
+    # changed to get 4.9M parameters
+    inputs_data = Input(shape = (num_features))
+    s = Dense(num_features[1],input_shape = inputs_data.shape)(inputs_data)
+    # s = tf.keras.layers.GaussianNoise(dropout_amount/2)(s, training = use_dropout)
+    d = Activation('elu')(s)
+    d = tf.keras.layers.Flatten()(d)
+    d = Dropout(dropout_amount)(d, training = use_dropout)
+    # d = tf.keras.layers.GaussianNoise(dropout_amount/2)(d, training = use_dropout)
+    d = Dense(6000)(d)
+    d = Activation('elu')(d)
+    d = Dropout(dropout_amount)(d, training = use_dropout)
+    # d = tf.keras.layers.GaussianNoise(dropout_amount/2)(d, training = use_dropout)
+
+    # final output layes for data exportation
+    output = Dense(1,activation='linear',name = 'continious_output')(d)
+
+    model = Model(inputs=[inputs_data], outputs=[output])#,out_categorical])
+
+    return model
+
+
 def fully_connected_dense_model(num_features = 2048, num_cat = 21, use_dropout = False, dropout_amount = 0.8):
     
     # rna-seq data input
@@ -101,14 +125,14 @@ class test_on_improved_val_loss(tf.keras.callbacks.Callback):
             print("Earlystop:,", epoch - np.argmin(val_loss_hist))
             loss_flag = False
 
-        if (epoch % 10) == 0 or loss_flag:
+        if (epoch % 100) == 0 or loss_flag:
 
             print('Testing on epoch', str(epoch))
 
             temp = np.load(os.path.join(curr_path,'data_arrays','test.npz'))
-            X_test,X_meta_test,y_test = temp['X'],temp['X_meta'],temp['y']
+            X_test,y_test = temp['X'],temp['y']
 
-            eval_result = self.model.evaluate([X_test,X_meta_test],[y_test],batch_size=1,verbose=0,return_dict=True)
+            eval_result = self.model.evaluate([X_test],[y_test],batch_size=1,verbose=0,return_dict=True)
             print(eval_result)
 
             # plt.figure(1)
@@ -116,7 +140,7 @@ class test_on_improved_val_loss(tf.keras.callbacks.Callback):
 
             predicted = []
             for i in range(5):
-                predicted.append(self.model.predict([X_test,X_meta_test],batch_size=1).squeeze())
+                predicted.append(self.model.predict([X_test],batch_size=1).squeeze())
             predicted = np.asarray(predicted)
             predicted = np.mean(predicted,axis = 0)
 
