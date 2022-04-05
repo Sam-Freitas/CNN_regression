@@ -56,14 +56,14 @@ on_epoch_end = test_on_improved_val_lossv3()
 
 # optimizer = tf.keras.optimizers.RMSprop(momentum=0.75)#, momentum=0.9)
 optimizer = tf.keras.optimizers.Adam(learning_rate = 0.00001)
-model.compile(optimizer=optimizer,loss='MeanSquaredError',metrics=['RootMeanSquaredError'])
+model.compile(optimizer=optimizer,loss='MeanAbsoluteError',metrics=['MeanSquaredError','RootMeanSquaredError'])
 
 # model.load_weights('checkpoints/cp.ckpt')
 
 history = model.fit([X_train],y_train,
     validation_data = ([X_val],y_val),
     batch_size=batch_size,epochs=epochs, initial_epoch = 0,
-    callbacks=[earlystop,on_epoch_end,save_checkpoints],
+    callbacks=[on_epoch_end,save_checkpoints],
     verbose=1)
 
 model.save_weights('model_weights/model_weights')
@@ -73,10 +73,11 @@ del model
 print("earlystop weights")
 
 model = fully_connected_CNN_v3(
-    height=X_train.shape[1],width=X_train.shape[2],use_dropout=False,
-    inital_filter_size=inital_filter_size,dropsize = dropsize,blocksize = blocksize
+    height=X_train.shape[1],width=X_train.shape[2],
+    use_dropout=False,inital_filter_size=inital_filter_size,dropsize = dropsize,blocksize = blocksize,
+    layers = 5, sub_layers = 5
     )
-model.compile(optimizer=optimizer,loss='MeanSquaredError',metrics=['RootMeanSquaredError'])
+model.compile(optimizer=optimizer,loss='MeanAbsoluteError',metrics=['MeanSquaredError','RootMeanSquaredError'])
 model.load_weights('model_weights/model_weights')
 
 eval_result = model.evaluate([X_test],[y_test],batch_size=1,verbose=0,return_dict=True)
@@ -134,10 +135,11 @@ print("Restored weights")
 del model
 
 model = fully_connected_CNN_v3(
-    height=X_train.shape[1],width=X_train.shape[2],use_dropout=False,
-    inital_filter_size=inital_filter_size,dropsize = dropsize,blocksize = blocksize
+    height=X_train.shape[1],width=X_train.shape[2],
+    use_dropout=False,inital_filter_size=inital_filter_size,dropsize = dropsize,blocksize = blocksize,
+    layers = 5, sub_layers = 5
     )
-model.compile(optimizer=optimizer,loss='MeanSquaredError',metrics=['RootMeanSquaredError'])
+model.compile(optimizer=optimizer,loss='MeanAbsoluteError',metrics=['MeanSquaredError','RootMeanSquaredError'])
 model.load_weights('checkpoints/cp.ckpt')
 
 eval_result = model.evaluate([X_test],[y_test],batch_size=1,verbose=0,return_dict=True)

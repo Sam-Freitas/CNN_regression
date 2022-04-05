@@ -18,7 +18,7 @@ import random
 
 # set up variables 
 
-this_tissue = 'Liver Hepatocytes'
+this_tissue = 'Adipose'
 print('loading data')
 temp = np.load('dense_regression/data_arrays/train.npz')
 X_train,y_train = temp['X'],temp['y']
@@ -39,7 +39,7 @@ print('Setting up model')
 model = fully_connected_dense_modelv2(num_features = num,use_dropout=True,dropout_amount = 0.1)
 plot_model(model)
 
-epochs = 30000
+epochs = 15000
 batch_size = 320
 
 save_checkpoints = tf.keras.callbacks.ModelCheckpoint(
@@ -57,14 +57,14 @@ model.compile(optimizer=optimizer,loss='MeanAbsoluteError',metrics=['MeanSquared
 
 model.summary()
 
-model.load_weights('dense_regression/checkpoint/cp.ckpt')
+# model.load_weights('dense_regression/checkpoint/cp.ckpt')
 
 history = model.fit([X_train],y_train,
     sample_weight = y_weights,
     validation_data = ([X_val],[y_val]),
     batch_size=batch_size,epochs=epochs,
     callbacks=[on_epoch_end,save_checkpoints],
-    verbose=1)#, initial_epoch=0)
+    verbose=1)#, initial_epoch=1300)
 
 model.save_weights('dense_regression/model_weights/model_weights')
 
