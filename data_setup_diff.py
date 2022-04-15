@@ -40,7 +40,7 @@ def diff_func(X_norm,y_norm, limit_data = False):
     return X_diff, y_diff
 
 
-age_normalizer = 128
+age_normalizer = 1
 print('loading in data')
 data_path = '/groups/sutphin/NN_trainings/IGTD/Results/Liver;liver hepatocytes_1_9620/data'
 data_path = '/groups/sutphin/NN_trainings/IGTD/Results/All_tissues_1_9620/data'
@@ -58,7 +58,8 @@ SRR_values = metadata_healthy['SRR.ID'].values
 unique_tissues = np.unique(metadata_healthy['Tissue'].values)
 
 # this_tissue = unique_tissues[0]
-this_tissue = 'Liver;liver hepatocytes'
+# this_tissue = 'Liver;liver hepatocytes'
+this_tissue = 'Blood;PBMC'
 print('Current tissue',this_tissue)
 
 X = []
@@ -110,7 +111,7 @@ X_norm, y_norm = X_norm[norm_idx], y_norm[norm_idx]
 
 norm_idx = np.arange(y_norm.shape[0])
 np.random.seed(50)
-val_idx = np.unique(np.random.randint(low=0,high=norm_idx.shape[0],size=(5,1)))
+val_idx = np.unique(np.random.randint(low=0,high=norm_idx.shape[0],size=(50,1)))
 temp = norm_idx[val_idx]
 norm_idx = np.delete(norm_idx,val_idx)
 val_idx = temp

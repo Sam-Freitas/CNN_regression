@@ -39,7 +39,7 @@ print('Setting up model')
 model = fully_connected_dense_modelv2(num_features = num,use_dropout=True,dropout_amount = 0.1)
 plot_model(model)
 
-epochs = 15000
+epochs = 1000
 batch_size = 320
 
 save_checkpoints = tf.keras.callbacks.ModelCheckpoint(

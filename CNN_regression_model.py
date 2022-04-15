@@ -47,9 +47,9 @@ def fully_connected_CNN_v3(use_dropout = False, height = 128, width = 128, chann
 
     flattened = tf.keras.layers.Flatten()(pool_3)
 
-    d = Dense(1000)(flattened)
+    d = Dense(128)(flattened)
     d = Activation('elu')(d)
-    d = Dropout(0.1)(d, training = use_dropout)
+    d = Dropout(0.75)(d, training = use_dropout)
 
     output = Dense(1,activation='linear')(d)
 

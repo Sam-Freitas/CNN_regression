@@ -14,7 +14,7 @@ from sklearn.preprocessing import PowerTransformer
 
 print('reading in data')
 
-this_tissue = 'Liver;liver hepatocytes'
+this_tissue = 'Blood;PBMC'
 
 dataset = ''
 
@@ -29,33 +29,39 @@ X_all = np.concatenate((X_train,X_val))
 y_all = np.concatenate((y_train,y_val))
 num = X_train.shape[1]
 
-inital_filter_size = 8
+# sample_weights = np.ones(shape = y_train.shape)
+sample_weights = (np.abs(y_train)+1)**(1/2)
+
+inital_filter_size = 6
 dropsize = 0.85
 blocksize = 5
+layers = 3
+sublayers = 0
 
 model = fully_connected_CNN_v3(
-    height=X_train.shape[1],width=X_train.shape[2],
+    height=X_train.shape[1],width=X_train.shape[2],channels=2,
     use_dropout=True,inital_filter_size=inital_filter_size,dropsize = dropsize,blocksize = blocksize,
-    layers = 5, sub_layers = 5
+    layers = layers, sub_layers = sublayers
     )
 plot_model(model)
+model.summary()
 
 # epochs = 15000
-epochs = 15000
-batch_size = 320
+epochs = 1000
+batch_size = 128
 
 save_checkpoints = tf.keras.callbacks.ModelCheckpoint(
     filepath = 'checkpoints/cp.ckpt', monitor = 'val_loss',
     mode = 'min',save_best_only = True,save_weights_only = True, verbose = 1)
 redule_lr = tf.keras.callbacks.ReduceLROnPlateau(
-    monitor = 'val_loss', factor = 0.9, patience = 40, min_lr = 0, verbose = 1)
+    monitor = 'val_loss', factor = 0.1, patience = 500, min_lr = 0, verbose = 1)
 earlystop = tf.keras.callbacks.EarlyStopping(restore_best_weights=False,
-    monitor = 'val_loss',min_delta = 0,patience = 500, verbose = 1)
+    monitor = 'val_loss',min_delta = 0,patience = 1000, verbose = 1)
 
 on_epoch_end = test_on_improved_val_lossv3()
 
 # optimizer = tf.keras.optimizers.RMSprop(momentum=0.75)#, momentum=0.9)
-optimizer = tf.keras.optimizers.Adam(learning_rate = 0.00001)
+optimizer = tf.keras.optimizers.Adam(learning_rate = 0.001) # 0.00001
 model.compile(optimizer=optimizer,loss='MeanAbsoluteError',metrics=['MeanSquaredError','RootMeanSquaredError'])
 
 # model.load_weights('checkpoints/cp.ckpt')
@@ -64,7 +70,8 @@ history = model.fit([X_train],y_train,
     validation_data = ([X_val],y_val),
     batch_size=batch_size,epochs=epochs, initial_epoch = 0,
     callbacks=[on_epoch_end,save_checkpoints],
-    verbose=1)
+    verbose=1,
+    sample_weight = sample_weights) 
 
 model.save_weights('model_weights/model_weights')
 
@@ -75,7 +82,7 @@ print("earlystop weights")
 model = fully_connected_CNN_v3(
     height=X_train.shape[1],width=X_train.shape[2],
     use_dropout=False,inital_filter_size=inital_filter_size,dropsize = dropsize,blocksize = blocksize,
-    layers = 5, sub_layers = 5
+    layers = layers, sub_layers = sublayers
     )
 model.compile(optimizer=optimizer,loss='MeanAbsoluteError',metrics=['MeanSquaredError','RootMeanSquaredError'])
 model.load_weights('model_weights/model_weights')
@@ -108,7 +115,7 @@ plt.scatter(y_test,predicted_test,color = 'b',alpha=0.3, label = 'testing data')
 plt.plot(np.linspace(np.min(y_all), np.max(y_all)),np.linspace(np.min(y_all), np.max(y_all)))
 
 plt.text(np.min(y_all),np.max(y_all),"r^2: " + str(r_squared_train),fontsize = 12, color = 'r')
-plt.text(np.min(y_all),np.max(y_all)-0.2,"r^2: " + str(r_squared_test),fontsize = 12, color = 'b')
+plt.text(np.min(y_all),np.max(y_all)-(0.2)*np.max(y_all),"r^2: " + str(r_squared_test),fontsize = 12, color = 'b')
 
 plt.legend(loc = 'upper center')
 plt.title(json.dumps(res).replace(',','\n'),fontsize = 10)
@@ -137,7 +144,7 @@ del model
 model = fully_connected_CNN_v3(
     height=X_train.shape[1],width=X_train.shape[2],
     use_dropout=False,inital_filter_size=inital_filter_size,dropsize = dropsize,blocksize = blocksize,
-    layers = 5, sub_layers = 5
+    layers = layers, sub_layers = sublayers
     )
 model.compile(optimizer=optimizer,loss='MeanAbsoluteError',metrics=['MeanSquaredError','RootMeanSquaredError'])
 model.load_weights('checkpoints/cp.ckpt')
@@ -170,7 +177,7 @@ plt.scatter(y_test,predicted_test,color = 'b',alpha=0.3, label = 'testing data')
 plt.plot(np.linspace(np.min(y_all), np.max(y_all)),np.linspace(np.min(y_all), np.max(y_all)))
 
 plt.text(np.min(y_all),np.max(y_all),"r^2: " + str(r_squared_train),fontsize = 12, color = 'r')
-plt.text(np.min(y_all),np.max(y_all)-0.2,"r^2: " + str(r_squared_test),fontsize = 12, color = 'b')
+plt.text(np.min(y_all),np.max(y_all)-(0.2)*np.max(y_all),"r^2: " + str(r_squared_test),fontsize = 12, color = 'b')
 
 plt.legend(loc = 'upper center')
 plt.title(json.dumps(res).replace(',','\n'),fontsize = 10)

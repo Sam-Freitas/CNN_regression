@@ -128,8 +128,9 @@ data = data.sort_index(axis = 0, ascending = True)
 
 print('parsing data')
 age_normalizer = 128
-this_tissue = 'Liver;liver hepatocytes'
+# this_tissue = 'Liver;liver hepatocytes'
 # this_tissue = 'All_tissues'
+this_tissue = 'Blood;PBMC'
 healthy_index = metadata['Healthy'].values == True
 tissue_index = healthy_index.copy()
 for count,temp in enumerate(metadata['Tissue'].values):
@@ -199,7 +200,7 @@ X_norm, y_norm = X_norm[norm_idx], y_norm[norm_idx]
 
 norm_idx = np.arange(y_norm.shape[0])
 np.random.seed(50)
-val_idx = np.unique(np.random.randint(low=0,high=norm_idx.shape[0],size=(5,1)))
+val_idx = np.unique(np.random.randint(low=0,high=norm_idx.shape[0],size=(50,1)))
 temp = norm_idx[val_idx]
 norm_idx = np.delete(norm_idx,val_idx)
 val_idx = temp
