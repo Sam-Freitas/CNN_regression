@@ -36,6 +36,7 @@ def fully_connected_CNN_v3(use_dropout = False, height = 128, width = 128, chann
         else:
             conv_3 = Conv2D(inital_filter_size*filt_mult, (3,3), activation = None, kernel_initializer = 'he_normal', padding = 'same', strides = (1,1))(pool_3)
         conv_3 = DropBlock2D(keep_prob = dropsize, block_size = blocksize)(conv_3, training = use_dropout)
+        conv_3 = BatchNormalization(momentum = 0.5)(conv_3)
         conv_3 = Activation('elu')(conv_3)
 
         for j in range(sub_layers):

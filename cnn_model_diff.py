@@ -32,7 +32,7 @@ num = X_train.shape[1]
 # sample_weights = np.ones(shape = y_train.shape)
 sample_weights = (np.abs(y_train)+1)**(1/2)
 
-inital_filter_size = 6
+inital_filter_size = 8
 dropsize = 0.85
 blocksize = 5
 layers = 3
@@ -47,8 +47,17 @@ plot_model(model)
 model.summary()
 
 # epochs = 15000
-epochs = 1000
+epochs = 10000
 batch_size = 128
+
+def scheduler(epoch, lr):
+    if epoch < 2000:
+        lr = 0.001
+    elif epoch > 1999 and epoch < 4000:
+        lr = 0.00001
+    else:
+        lr = 0.0000001
+    return lr
 
 save_checkpoints = tf.keras.callbacks.ModelCheckpoint(
     filepath = 'checkpoints/cp.ckpt', monitor = 'val_loss',
@@ -57,11 +66,12 @@ redule_lr = tf.keras.callbacks.ReduceLROnPlateau(
     monitor = 'val_loss', factor = 0.1, patience = 500, min_lr = 0, verbose = 1)
 earlystop = tf.keras.callbacks.EarlyStopping(restore_best_weights=False,
     monitor = 'val_loss',min_delta = 0,patience = 1000, verbose = 1)
+lr_scheduler = tf.keras.callbacks.LearningRateScheduler(scheduler)
 
 on_epoch_end = test_on_improved_val_lossv3()
 
 # optimizer = tf.keras.optimizers.RMSprop(momentum=0.75)#, momentum=0.9)
-optimizer = tf.keras.optimizers.Adam(learning_rate = 0.001) # 0.00001
+optimizer = tf.keras.optimizers.Adam() # 0.00001
 model.compile(optimizer=optimizer,loss='MeanAbsoluteError',metrics=['MeanSquaredError','RootMeanSquaredError'])
 
 # model.load_weights('checkpoints/cp.ckpt')
@@ -69,7 +79,7 @@ model.compile(optimizer=optimizer,loss='MeanAbsoluteError',metrics=['MeanSquared
 history = model.fit([X_train],y_train,
     validation_data = ([X_val],y_val),
     batch_size=batch_size,epochs=epochs, initial_epoch = 0,
-    callbacks=[on_epoch_end,save_checkpoints],
+    callbacks=[on_epoch_end,save_checkpoints,lr_scheduler],
     verbose=1,
     sample_weight = sample_weights) 
 
