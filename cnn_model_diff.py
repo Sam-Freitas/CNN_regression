@@ -33,21 +33,21 @@ num = X_train.shape[1]
 sample_weights = (np.abs(y_train)+1)**(1/2)
 
 inital_filter_size = 8
-dropsize = 0.85
+keep_prob = 0.85
 blocksize = 5
 layers = 3
 sublayers = 0
 
 model = fully_connected_CNN_v3(
     height=X_train.shape[1],width=X_train.shape[2],channels=2,
-    use_dropout=True,inital_filter_size=inital_filter_size,dropsize = dropsize,blocksize = blocksize,
+    use_dropout=True,inital_filter_size=inital_filter_size,keep_prob = keep_prob,blocksize = blocksize,
     layers = layers, sub_layers = sublayers
     )
 plot_model(model)
 model.summary()
 
 # epochs = 15000
-epochs = 10000
+epochs = 5000
 batch_size = 128
 
 def scheduler(epoch, lr):
@@ -71,7 +71,7 @@ lr_scheduler = tf.keras.callbacks.LearningRateScheduler(scheduler)
 on_epoch_end = test_on_improved_val_lossv3()
 
 # optimizer = tf.keras.optimizers.RMSprop(momentum=0.75)#, momentum=0.9)
-optimizer = tf.keras.optimizers.Adam() # 0.00001
+optimizer = tf.keras.optimizers.Adam(learning_rate=0.0001) # 0.00001
 model.compile(optimizer=optimizer,loss='MeanAbsoluteError',metrics=['MeanSquaredError','RootMeanSquaredError'])
 
 # model.load_weights('checkpoints/cp.ckpt')
@@ -79,7 +79,7 @@ model.compile(optimizer=optimizer,loss='MeanAbsoluteError',metrics=['MeanSquared
 history = model.fit([X_train],y_train,
     validation_data = ([X_val],y_val),
     batch_size=batch_size,epochs=epochs, initial_epoch = 0,
-    callbacks=[on_epoch_end,save_checkpoints,lr_scheduler],
+    callbacks=[on_epoch_end,save_checkpoints],
     verbose=1,
     sample_weight = sample_weights) 
 
@@ -90,8 +90,8 @@ del model
 print("earlystop weights")
 
 model = fully_connected_CNN_v3(
-    height=X_train.shape[1],width=X_train.shape[2],
-    use_dropout=False,inital_filter_size=inital_filter_size,dropsize = dropsize,blocksize = blocksize,
+    height=X_train.shape[1],width=X_train.shape[2],channels=2,
+    use_dropout=True,inital_filter_size=inital_filter_size,keep_prob = keep_prob,blocksize = blocksize,
     layers = layers, sub_layers = sublayers
     )
 model.compile(optimizer=optimizer,loss='MeanAbsoluteError',metrics=['MeanSquaredError','RootMeanSquaredError'])
@@ -152,8 +152,8 @@ print("Restored weights")
 del model
 
 model = fully_connected_CNN_v3(
-    height=X_train.shape[1],width=X_train.shape[2],
-    use_dropout=False,inital_filter_size=inital_filter_size,dropsize = dropsize,blocksize = blocksize,
+    height=X_train.shape[1],width=X_train.shape[2],channels=2,
+    use_dropout=True,inital_filter_size=inital_filter_size,keep_prob = keep_prob,blocksize = blocksize,
     layers = layers, sub_layers = sublayers
     )
 model.compile(optimizer=optimizer,loss='MeanAbsoluteError',metrics=['MeanSquaredError','RootMeanSquaredError'])

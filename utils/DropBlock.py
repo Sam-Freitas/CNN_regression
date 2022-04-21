@@ -18,8 +18,6 @@ class DropBlock2D(tf.keras.layers.Layer):
     def get_config(self):
         config = super().get_config().copy()
         config.update( {"block_size": self.block_size,"keep_prob": self.keep_prob,"name": self.names })
-
-        
         
         return config
 
