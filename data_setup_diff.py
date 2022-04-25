@@ -52,8 +52,9 @@ def get_n_samples(n,this_array,this_seed = 50):
 
 age_normalizer = 1
 print('loading in data')
-data_path = '/groups/sutphin/NN_trainings/IGTD/Results/Liver;liver hepatocytes_1_9620/data'
-data_path = r"C:\Users\Lab PC\Documents\GitHub\IGTD\Results\All_tissues_1_9620\data"
+# data_path = '/groups/sutphin/NN_trainings/IGTD/Results/Liver;liver hepatocytes_1_9620/data'
+data_path = '/groups/sutphin/NN_trainings/IGTD/Results/All_tissues_1_9620/data'
+# data_path = r"C:\Users\Lab PC\Documents\GitHub\IGTD\Results\All_tissues_1_9620\data"
 metadata_path = 'dense_regression/meta_filtered.csv'
 imgs_list = natsorted(glob.glob(os.path.join(data_path,'*.txt')))
 metadata = pd.read_csv(metadata_path)
@@ -97,16 +98,6 @@ X_meta = np.asarray(X_meta)
 X_norm = X 
 y_norm = y
 
-# X_meta_cleaned = X_meta.copy()
-# for i in range(X_meta_cleaned.shape[0]):
-#     temp_meta = X_meta[i][1].lower()
-#     X_meta_cleaned[i][1] = temp_meta.replace('/','-')
-
-# le = LabelEncoder()
-# X_meta_norm = np.zeros(shape=X_meta_cleaned.shape)
-# for count,this_feature in enumerate(X_meta_cleaned.transpose()):
-#     X_meta_norm[:,count] = le.fit_transform(this_feature)
-
 # remove 5 random samples for testing later 
 test_idx, norm_idx = get_n_samples(5,y_norm,this_seed = 50)
 
@@ -122,37 +113,32 @@ X_norm_init = X_norm.copy()
 
 temp = np.zeros(shape=(1,))
 
-for i in range(3):
-    val_idx, norm_idx = get_n_samples(50,y_norm_init,this_seed = i)
+to_save = os.path.split(__file__)[0]
+save_dir = 'data_arrays'
+save_path = os.path.join(to_save,save_dir)
+
+os.makedirs(save_path, exist_ok = True)
+train_save_path = os.path.join(save_path,'All_data')
+np.savez(train_save_path,X = X_norm,y = y_norm)
+
+test_save_path = os.path.join(save_path,'test')
+np.savez(test_save_path,X = X_test,y = y_test)
+
+for i in range(10):
+    val_idx, train_idx = get_n_samples(50,y_norm_init,this_seed = i)
 
     temp = np.concatenate([temp,val_idx],axis = 0)
 
     print(val_idx)
 
-    # generate the test train/val split
-    X_norm_val, y_norm_val = X_norm_init[val_idx], y_norm_init[val_idx]
-    X_norm, y_norm = X_norm_init[norm_idx], y_norm_init[norm_idx]
-
-    # generate the diff data with seperate blinded set
-    X_train,y_train = diff_func(X_norm,y_norm)
-    X_val,y_val = diff_func(X_norm_val,y_norm_val)
-
-    print('Saving data arrays')
+    print('Saving index arrays')
     # set up saving 
-    to_save = os.path.split(__file__)[0]
-    save_dir = 'data_arrays'
-    save_path = os.path.join(to_save,save_dir)
 
-    os.makedirs(save_path, exist_ok = True)
+    train_save_path = os.path.join(save_path,'val' + str(i))
+    np.savez(train_save_path,idx = val_idx)
 
     train_save_path = os.path.join(save_path,'train' + str(i))
-    np.savez(train_save_path,X = X_train,y = y_train)
-
-    val_save_path = os.path.join(save_path,'val' + str(i))
-    np.savez(val_save_path,X = X_val,y = y_val)
-
-test_save_path = os.path.join(save_path,'test')
-np.savez(test_save_path,X = X_test,y = y_test)
+    np.savez(train_save_path,idx = train_idx)
 
 print('eof')
 
