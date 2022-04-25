@@ -13,6 +13,7 @@ from scipy import stats
 from scipy.spatial.distance import correlation as dist_corr_eucl
 from numpy.polynomial import Polynomial
 from sklearn.model_selection import train_test_split
+from sklearn.model_selection import RepeatedStratifiedKFold as rskf
 import random
 # from minepy.mine import MINE
 
@@ -54,7 +55,7 @@ age_normalizer = 1
 print('loading in data')
 # data_path = '/groups/sutphin/NN_trainings/IGTD/Results/Liver;liver hepatocytes_1_9620/data'
 data_path = '/groups/sutphin/NN_trainings/IGTD/Results/All_tissues_1_9620/data'
-# data_path = r"C:\Users\Lab PC\Documents\GitHub\IGTD\Results\All_tissues_1_9620\data"
+#data_path = r"C:\Users\Lab PC\Documents\GitHub\IGTD\Results\All_tissues_1_9620\data"
 metadata_path = 'dense_regression/meta_filtered.csv'
 imgs_list = natsorted(glob.glob(os.path.join(data_path,'*.txt')))
 metadata = pd.read_csv(metadata_path)
@@ -119,27 +120,33 @@ save_path = os.path.join(to_save,save_dir)
 
 os.makedirs(save_path, exist_ok = True)
 train_save_path = os.path.join(save_path,'All_data')
-np.savez(train_save_path,X = X_norm,y = y_norm)
+# np.savez(train_save_path,X = X_norm,y = y_norm)
 
 test_save_path = os.path.join(save_path,'test')
 np.savez(test_save_path,X = X_test,y = y_test)
 
-for i in range(10):
-    val_idx, train_idx = get_n_samples(50,y_norm_init,this_seed = i)
+n_kfolds = 10
+skf = rskf(n_splits = 10, n_repeats = 1)
+k = np.asarray(list(range(len(y_norm_init))))
 
-    temp = np.concatenate([temp,val_idx],axis = 0)
+count = 0
+for train_idx,val_idx in skf.split(k,y_norm_init):
 
     print(val_idx)
 
-    print('Saving index arrays')
-    # set up saving 
+    if count == 0:
+        temp = val_idx
+    else:
+        temp = np.append(temp,val_idx)
 
-    train_save_path = os.path.join(save_path,'val' + str(i))
+    train_save_path = os.path.join(save_path,'val' + str(count))
     np.savez(train_save_path,idx = val_idx)
 
-    train_save_path = os.path.join(save_path,'train' + str(i))
+    train_save_path = os.path.join(save_path,'train' + str(count))
     np.savez(train_save_path,idx = train_idx)
+    count += 1
 
+print('validation uses',len(np.unique(np.asarray(temp))),'of',len(np.unique(np.asarray(k))), 'in dataset')
 print('eof')
 
 # y_diff = []
