@@ -22,7 +22,7 @@ import cv2
 import os
 
 def fully_connected_CNN_v3(use_dropout = False, height = 128, width = 128, channels = 2, kernal_size = (3,3), 
-    inital_filter_size = 16,dropsize = 0.9,blocksize = 7, layers = 3, sub_layers = 3):
+    inital_filter_size = 16,keep_prob = 0.9,blocksize = 7, layers = 3, sub_layers = 3):
 
     inputs = Input((height, width, channels))
 
@@ -31,25 +31,29 @@ def fully_connected_CNN_v3(use_dropout = False, height = 128, width = 128, chann
     # first block of convolutions
     for i in range(layers):
         filt_mult = 2**i
+        this_filter_size = inital_filter_size*filt_mult
+        this_dropblock_size = inital_filter_size/filt_mult
         if i == 0:
-            conv_3 = Conv2D(inital_filter_size*filt_mult, (3,3), activation = None, kernel_initializer = 'he_normal', padding = 'same', strides = (1,1))(s)
+            conv_3 = Conv2D(this_filter_size, (3,3), activation = None, kernel_initializer = 'he_normal', padding = 'same', strides = (1,1))(s)
         else:
             conv_3 = Conv2D(inital_filter_size*filt_mult, (3,3), activation = None, kernel_initializer = 'he_normal', padding = 'same', strides = (1,1))(pool_3)
-        conv_3 = DropBlock2D(keep_prob = dropsize, block_size = blocksize)(conv_3, training = use_dropout)
+        conv_3 = DropBlock2D(keep_prob = keep_prob, block_size = blocksize)(conv_3, training = use_dropout)
         # conv_3 = BatchNormalization(momentum = 0.5)(conv_3)
         conv_3 = Activation('elu')(conv_3)
 
         for j in range(sub_layers):
-            conv_3 = Conv2D(inital_filter_size*filt_mult, (3,3), activation = None, kernel_initializer = 'he_normal', padding = 'same', strides = (1,1))(conv_3)
-            # conv_3 = DropBlock2D(keep_prob = dropsize, block_size = blocksize)(conv_3, training = use_dropout)
-            conv_3 = Activation('elu')(conv_3)
+            conv_3 = Conv2D(this_filter_size, (3,3), activation = None, kernel_initializer = 'he_normal', padding = 'same', strides = (1,1))(conv_3)
+            # conv_3 = DropBlock2D(keep_prob = keep_prob, block_size = blocksize)(conv_3, training = use_dropout)
+            conv_3 = Activation('swish')(conv_3)
 
         pool_3 = MaxPooling2D((2,2))(conv_3)
+
+    # pool_3 = DropBlock2D(keep_prob = keep_prob, block_size = blocksize)(pool_3, training = use_dropout)
 
     flattened = tf.keras.layers.Flatten()(pool_3)
 
     d = Dense(128)(flattened)
-    d = Activation('elu')(d)
+    d = Activation('swish')(d)
     d = Dropout(0.75)(d, training = use_dropout)
 
     output = Dense(1,activation='linear')(d)

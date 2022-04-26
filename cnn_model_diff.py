@@ -21,7 +21,7 @@ temp = np.load('data_arrays/test.npz')
 X_test,y_test = temp['X'],temp['y']
 
 inital_filter_size = 8
-dropsize = 0.85
+keep_prob = 0.85
 blocksize = 5
 layers = 3
 sublayers = 0
@@ -55,7 +55,7 @@ for i in range(num_k_folds):
 
     model = fully_connected_CNN_v3(
         height=input_height,width=input_width,channels=2,
-        use_dropout=True,inital_filter_size=inital_filter_size,dropsize = dropsize,blocksize = blocksize,
+        use_dropout=True,inital_filter_size=inital_filter_size,dropsize = keep_prob,blocksize = blocksize,
         layers = layers, sub_layers = sublayers
     )
     sample_weights = (np.abs(y_train)+1)**(1/2)
@@ -102,7 +102,7 @@ for i in range(num_k_folds):
     models.append(
         fully_connected_CNN_v3(
         height=74,width=130,channels=2,
-        use_dropout=False,inital_filter_size=inital_filter_size,dropsize = dropsize,blocksize = blocksize,
+        use_dropout=False,inital_filter_size=inital_filter_size,dropsize = keep_prob,blocksize = blocksize,
         layers = layers, sub_layers = sublayers)
     )
     checkpoint_path = 'checkpoints/checkpoints' + str(i) + '/cp.ckpt'
