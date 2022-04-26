@@ -29,7 +29,7 @@ input_height = 74
 input_width = 130
 
 # epochs = 15000
-epochs = 3
+epochs = 100
 batch_size = 128
 
 k_folds = glob.glob(os.path.join('data_arrays','*.npz'))
@@ -102,7 +102,7 @@ for i in range(num_k_folds):
     models.append(
         fully_connected_CNN_v3(
         height=74,width=130,channels=2,
-        use_dropout=False,inital_filter_size=inital_filter_size,dropsize = dropsize,blocksize = blocksize,
+        use_dropout=False,inital_filter_size=inital_filter_size,keep_prob = dropsize,blocksize = blocksize,
         layers = layers, sub_layers = sublayers)
     )
     checkpoint_path = 'checkpoints/checkpoints' + str(i) + '/cp.ckpt'
