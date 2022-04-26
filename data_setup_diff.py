@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import albumentations as A
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
-import tensorflow as tf
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler, LabelEncoder, PolynomialFeatures, PowerTransformer, QuantileTransformer, StandardScaler
@@ -14,6 +13,7 @@ from scipy import stats
 from scipy.spatial.distance import correlation as dist_corr_eucl
 from numpy.polynomial import Polynomial
 from sklearn.model_selection import train_test_split
+from sklearn.model_selection import RepeatedStratifiedKFold as rskf
 import random
 # from minepy.mine import MINE
 
@@ -39,12 +39,24 @@ def diff_func(X_norm,y_norm, limit_data = False):
 
     return X_diff, y_diff
 
+def get_n_samples(n,this_array,this_seed = 50):
+
+    norm_idx = np.arange(this_array.shape[0])
+    np.random.seed(this_seed)
+    new_idx = np.unique(np.random.randint(low=0,high=norm_idx.shape[0],size=(n,1)))
+    temp = norm_idx[new_idx]
+    norm_idx = np.delete(norm_idx,new_idx)
+    new_idx = temp
+
+    return new_idx, norm_idx
+
 
 age_normalizer = 1
 print('loading in data')
-data_path = '/groups/sutphin/NN_trainings/IGTD/Results/Liver;liver hepatocytes_1_9620/data'
+# data_path = '/groups/sutphin/NN_trainings/IGTD/Results/Liver;liver hepatocytes_1_9620/data'
 data_path = '/groups/sutphin/NN_trainings/IGTD/Results/All_tissues_1_9620/data'
-metadata_path = '/home/u23/samfreitas/NN_trainings/CNN_regression/dense_regression/meta_filtered.csv'
+#data_path = r"C:\Users\Lab PC\Documents\GitHub\IGTD\Results\All_tissues_1_9620\data"
+metadata_path = 'dense_regression/meta_filtered.csv'
 imgs_list = natsorted(glob.glob(os.path.join(data_path,'*.txt')))
 metadata = pd.read_csv(metadata_path)
 
@@ -87,72 +99,54 @@ X_meta = np.asarray(X_meta)
 X_norm = X 
 y_norm = y
 
-X_meta_cleaned = X_meta.copy()
-for i in range(X_meta_cleaned.shape[0]):
-    temp_meta = X_meta[i][1].lower()
-    X_meta_cleaned[i][1] = temp_meta.replace('/','-')
+# remove 5 random samples for testing later 
+test_idx, norm_idx = get_n_samples(5,y_norm,this_seed = 50)
 
-le = LabelEncoder()
-X_meta_norm = np.zeros(shape=X_meta_cleaned.shape)
-for count,this_feature in enumerate(X_meta_cleaned.transpose()):
-    X_meta_norm[:,count] = le.fit_transform(this_feature)
-
-norm_idx = np.arange(y_norm.shape[0])
-np.random.seed(50)
-test_idx = np.unique(np.random.randint(low=0,high=norm_idx.shape[0],size=(5,1)))
-temp = norm_idx[test_idx]
-norm_idx = np.delete(norm_idx,test_idx)
-test_idx = temp
-del temp
-
-# generate the test train/val split
+# split the test set off from the rest (to be k folded)
 X_norm_test, y_norm_test = X_norm[test_idx], y_norm[test_idx]
 X_norm, y_norm = X_norm[norm_idx], y_norm[norm_idx]
 
-norm_idx = np.arange(y_norm.shape[0])
-np.random.seed(50)
-val_idx = np.unique(np.random.randint(low=0,high=norm_idx.shape[0],size=(50,1)))
-temp = norm_idx[val_idx]
-norm_idx = np.delete(norm_idx,val_idx)
-val_idx = temp
-del temp
+# run the diff function only for the test set
+X_test,y_test = diff_func(X_norm_test, y_norm_test)
 
-# generate the test train/val split
-X_norm_val, y_norm_val = X_norm[val_idx], y_norm[val_idx]
-X_norm, y_norm = X_norm[norm_idx], y_norm[norm_idx]
+y_norm_init = y_norm.copy()
+X_norm_init = X_norm.copy()
 
-# generate the diff data with seperate blinded set
-X_diff,y_diff = diff_func(X_norm,y_norm)
-X_diff_val,y_diff_val = diff_func(X_norm_val,y_norm_val)
-X_diff_test,y_diff_test = diff_func(X_norm_test, y_norm_test)
+temp = np.zeros(shape=(1,))
 
-# training data
-X_train = X_diff
-y_train = y_diff
-# validation data
-X_val = X_diff_val
-y_val = y_diff_val
-# test data
-X_test = X_diff_test
-y_test = y_diff_test
-
-print('Saving data arrays')
-# set up saving 
 to_save = os.path.split(__file__)[0]
 save_dir = 'data_arrays'
 save_path = os.path.join(to_save,save_dir)
 
 os.makedirs(save_path, exist_ok = True)
-
-train_save_path = os.path.join(save_path,'train')
-np.savez(train_save_path,X = X_train,y = y_train)
-
-val_save_path = os.path.join(save_path,'val')
-np.savez(val_save_path,X = X_val,y = y_val)
+train_save_path = os.path.join(save_path,'All_data')
+# np.savez(train_save_path,X = X_norm,y = y_norm)
 
 test_save_path = os.path.join(save_path,'test')
 np.savez(test_save_path,X = X_test,y = y_test)
 
+n_kfolds = 10
+skf = rskf(n_splits = 10, n_repeats = 1)
+k = np.asarray(list(range(len(y_norm_init))))
+
+count = 0
+for train_idx,val_idx in skf.split(k,y_norm_init):
+
+    print(val_idx)
+
+    if count == 0:
+        temp = val_idx
+    else:
+        temp = np.append(temp,val_idx)
+
+    train_save_path = os.path.join(save_path,'val' + str(count))
+    np.savez(train_save_path,idx = val_idx)
+
+    train_save_path = os.path.join(save_path,'train' + str(count))
+    np.savez(train_save_path,idx = train_idx)
+    count += 1
+
+print('validation uses',len(np.unique(np.asarray(temp))),'of',len(np.unique(np.asarray(k))), 'in dataset')
 print('eof')
 
 # y_diff = []

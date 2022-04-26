@@ -36,11 +36,11 @@ def fully_connected_CNN_v3(use_dropout = False, height = 128, width = 128, chann
         if i == 0:
             conv_3 = Conv2D(this_filter_size, (3,3), activation = None, kernel_initializer = 'he_normal', padding = 'same', strides = (1,1))(s)
         else:
-            conv_3 = Conv2D(this_filter_size, (3,3), activation = None, kernel_initializer = 'he_normal', padding = 'same', strides = (1,1))(pool_3)
-        conv_3 = DropBlock2D(keep_prob = keep_prob, block_size = this_dropblock_size)(conv_3, training = use_dropout)
-        # conv_3 = tf.keras.layers.SpatialDropout2D(0.1)(conv_3, training = use_dropout)
+            conv_3 = Conv2D(inital_filter_size*filt_mult, (3,3), activation = None, kernel_initializer = 'he_normal', padding = 'same', strides = (1,1))(pool_3)
+        conv_3 = DropBlock2D(keep_prob = keep_prob, block_size = blocksize)(conv_3, training = use_dropout)
         # conv_3 = BatchNormalization(momentum = 0.5)(conv_3)
-        conv_3 = Activation('swish')(conv_3)
+        conv_3 = Activation('elu')(conv_3)
+
 
         for j in range(sub_layers):
             conv_3 = Conv2D(this_filter_size, (3,3), activation = None, kernel_initializer = 'he_normal', padding = 'same', strides = (1,1))(conv_3)
@@ -374,6 +374,28 @@ def load_rotated_minst_dataset(seed = None):
 
     return (X_out,y_out),(X_out_val,y_out_val) ,(X_out_test,y_out_test)
 
+def diff_func(X_norm,y_norm,age_normalizer = 1):
+    print('Diff function generation')
+    y_diff = []
+    X_diff = []
+    num_loops = y_norm.shape[0]
+    count = 0
+    for i in tqdm(range(num_loops)):
+        X1 = X_norm[i]
+        y1 = y_norm[i]
+        for j in range(num_loops):
+            X2 = X_norm[j]
+            y2 = y_norm[j]
+            X_diff.append(np.concatenate([np.atleast_3d(X1),np.atleast_3d(X2)],axis = -1).squeeze())
+            y_temp = (y1-y2)/age_normalizer
+            y_temp = np.round(y_temp,3)
+            y_diff.append(y_temp)
+            count = count + 1
+    X_diff = np.asarray(X_diff)
+    y_diff = np.asarray(y_diff)
+
+    return X_diff, y_diff
+
 class test_on_improved_val_loss(tf.keras.callbacks.Callback):
     def on_epoch_end(self, epoch, logs=None):
 
@@ -448,6 +470,8 @@ class test_on_improved_val_loss(tf.keras.callbacks.Callback):
 class test_on_improved_val_lossv3(tf.keras.callbacks.Callback):
     def on_epoch_end(self, epoch, logs=None):
 
+        plt.ioff()
+
         curr_path = os.path.split(__file__)[0]
 
         curr_val_loss = logs['val_loss']
@@ -456,21 +480,30 @@ class test_on_improved_val_lossv3(tf.keras.callbacks.Callback):
         except:
             val_loss_hist = curr_val_loss + 1
 
+        path_to_out = os.path.join(curr_path, 'output_images_testing_during')
+
         if epoch == 0:
             try:
-                os.mkdir(os.path.join(curr_path, 'output_images_testing_during'))
+                os.mkdir(path_to_out)
             except:
-                shutil.rmtree(os.path.join(curr_path, 'output_images_testing_during'))
-                os.mkdir(os.path.join(curr_path, 'output_images_testing_during'))
+                shutil.rmtree(path_to_out)
+                os.mkdir(path_to_out)
+
+        if not self.model.history.epoch:
+            num_k_fold = len(glob.glob(os.path.join(path_to_out,'*/')))
+            os.mkdir(os.path.join(path_to_out,str(num_k_fold)))
+            print('Kfold -',num_k_fold)
+        else:
+            num_k_fold = len(glob.glob(os.path.join(path_to_out,'*/')))-1
+            print('Kfold -',num_k_fold)
 
         if curr_val_loss < np.min(val_loss_hist) or epoch == 0:
-            print("val_loss improved to:",curr_val_loss)
             loss_flag = True
         else:
-            print("Earlystop:,", epoch - np.argmin(val_loss_hist))
+            print("Earlystop:,", epoch - self.model.history.epoch[0] - np.argmin(val_loss_hist))
             loss_flag = False
 
-        if (epoch % 10) == 0 or loss_flag:
+        if (epoch % 1) == 0 or loss_flag: # this will always be true
 
             print('Testing on epoch', str(epoch))
 
@@ -497,6 +530,7 @@ class test_on_improved_val_lossv3(tf.keras.callbacks.Callback):
             res = dict()
             for key in eval_result: res[key] = round(eval_result[key],6)
 
+            plt.ioff()
             plt.scatter(y_test,predicted,color = 'r',alpha=0.2)
             plt.plot(np.linspace(np.min(y_test), np.max(y_test)),np.linspace(np.min(y_test), np.max(y_test)))
             plt.text(np.min(y_test),np.max(y_test),"r^2: " + str(r_squared),fontsize = 12)
@@ -509,7 +543,7 @@ class test_on_improved_val_lossv3(tf.keras.callbacks.Callback):
             else:
                 extn = ''
 
-            output_name = os.path.join(curr_path,'output_images_testing_during',str(epoch) + '_' + str(r_squared)[2:] + extn +'.png')
+            output_name = os.path.join(curr_path,'output_images_testing_during',str(num_k_fold),str(epoch) + '_' + str(r_squared)[2:] + extn +'.png')
 
             plt.savefig(fname = output_name)
 
