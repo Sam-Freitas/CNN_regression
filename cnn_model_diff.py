@@ -21,7 +21,7 @@ temp = np.load('data_arrays/test.npz')
 X_test,y_test = temp['X'],temp['y']
 
 inital_filter_size = 8
-keep_prob = 0.85
+dropsize = 0.85
 blocksize = 5
 layers = 3
 sublayers = 0
@@ -29,7 +29,7 @@ input_height = 74
 input_width = 130
 
 # epochs = 15000
-epochs = 1000
+epochs = 3
 batch_size = 128
 
 k_folds = glob.glob(os.path.join('data_arrays','*.npz'))
@@ -55,7 +55,7 @@ for i in range(num_k_folds):
 
     model = fully_connected_CNN_v3(
         height=input_height,width=input_width,channels=2,
-        use_dropout=True,inital_filter_size=inital_filter_size,dropsize = keep_prob,blocksize = blocksize,
+        use_dropout=True,inital_filter_size=inital_filter_size,keep_prob = dropsize,blocksize = blocksize,
         layers = layers, sub_layers = sublayers
     )
     sample_weights = (np.abs(y_train)+1)**(1/2)
@@ -64,7 +64,7 @@ for i in range(num_k_folds):
         filepath = 'checkpoints/checkpoints' + str(i) + '/cp.ckpt', monitor = 'val_loss',
         mode = 'min',save_best_only = True,save_weights_only = True, verbose = 1)
     on_epoch_end = test_on_improved_val_lossv3()
-    optimizer = tf.keras.optimizers.Adam(learning_rate = 0.001,amsgrad=True) # 0.00001
+    optimizer = tf.keras.optimizers.Adam(learning_rate = 0.0005,amsgrad=True) # 0.00001
     model.compile(optimizer=optimizer,loss='MeanAbsoluteError',metrics=['RootMeanSquaredError'])
 
     inital_epoch = (i*epochs)
@@ -102,7 +102,7 @@ for i in range(num_k_folds):
     models.append(
         fully_connected_CNN_v3(
         height=74,width=130,channels=2,
-        use_dropout=False,inital_filter_size=inital_filter_size,dropsize = keep_prob,blocksize = blocksize,
+        use_dropout=False,inital_filter_size=inital_filter_size,dropsize = dropsize,blocksize = blocksize,
         layers = layers, sub_layers = sublayers)
     )
     checkpoint_path = 'checkpoints/checkpoints' + str(i) + '/cp.ckpt'
