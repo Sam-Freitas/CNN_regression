@@ -29,17 +29,8 @@ input_height = 74
 input_width = 130
 
 # epochs = 15000
-epochs = 100
+epochs = 1000
 batch_size = 128
-
-def scheduler(epoch, lr):
-    if epoch < 2000:
-        lr = 0.001
-    elif epoch > 1999 and epoch < 4000:
-        lr = 0.00001
-    else:
-        lr = 0.0000001
-    return lr
 
 k_folds = glob.glob(os.path.join('data_arrays','*.npz'))
 num_k_folds = 0
@@ -73,7 +64,7 @@ for i in range(num_k_folds):
         filepath = 'checkpoints/checkpoints' + str(i) + '/cp.ckpt', monitor = 'val_loss',
         mode = 'min',save_best_only = True,save_weights_only = True, verbose = 1)
     on_epoch_end = test_on_improved_val_lossv3()
-    optimizer = tf.keras.optimizers.Adam() # 0.00001
+    optimizer = tf.keras.optimizers.Adam(learning_rate = 0.001,amsgrad=True) # 0.00001
     model.compile(optimizer=optimizer,loss='MeanAbsoluteError',metrics=['RootMeanSquaredError'])
 
     inital_epoch = (i*epochs)
@@ -83,7 +74,7 @@ for i in range(num_k_folds):
         validation_data = ([X_val],y_val),
         batch_size=batch_size,epochs=this_epochs, initial_epoch = inital_epoch,
         callbacks=[on_epoch_end,save_checkpoints],
-        verbose=0,
+        verbose=1,
         sample_weight = sample_weights) 
 
     model.save_weights('model_weights/model_weights' + str(i) + '/model_weights')
@@ -95,7 +86,7 @@ def stacked_dataset(members, inputX):
 	stackX = None
 	for model in members:
 		# make prediction
-		yhat = model.predict(inputX, verbose=0)
+		yhat = model.predict(inputX,batch_size=batch_size)
 		# stack predictions into [rows, members, probabilities]
 		if stackX is None:
 			stackX = yhat
@@ -116,7 +107,7 @@ for i in range(num_k_folds):
     )
     checkpoint_path = 'checkpoints/checkpoints' + str(i) + '/cp.ckpt'
     models[i].load_weights(checkpoint_path)
-    optimizer = tf.keras.optimizers.Adam() # 0.00001
+    optimizer = tf.keras.optimizers.Adam(learning_rate=0.001,amsgrad=True) # 0.00001
     models[i].compile(optimizer=optimizer,loss='MeanAbsoluteError',metrics=['RootMeanSquaredError'])
 
 X_train, y_train = diff_func(X_norm, y_norm)

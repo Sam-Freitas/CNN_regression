@@ -475,18 +475,27 @@ class test_on_improved_val_lossv3(tf.keras.callbacks.Callback):
         except:
             val_loss_hist = curr_val_loss + 1
 
+        path_to_out = os.path.join(curr_path, 'output_images_testing_during')
+
         if epoch == 0:
             try:
-                os.mkdir(os.path.join(curr_path, 'output_images_testing_during'))
+                os.mkdir(path_to_out)
             except:
-                shutil.rmtree(os.path.join(curr_path, 'output_images_testing_during'))
-                os.mkdir(os.path.join(curr_path, 'output_images_testing_during'))
+                shutil.rmtree(path_to_out)
+                os.mkdir(path_to_out)
+
+        if not self.model.history.epoch:
+            num_k_fold = len(glob.glob(os.path.join(path_to_out,'*/')))
+            os.mkdir(os.path.join(path_to_out,str(num_k_fold)))
+            print('Kfold -',num_k_fold)
+        else:
+            num_k_fold = len(glob.glob(os.path.join(path_to_out,'*/')))-1
+            print('Kfold -',num_k_fold)
 
         if curr_val_loss < np.min(val_loss_hist) or epoch == 0:
-            print("val_loss improved to:",curr_val_loss)
             loss_flag = True
         else:
-            print("Earlystop:,", epoch - np.argmin(val_loss_hist))
+            print("Earlystop:,", epoch - self.model.history.epoch[0] - np.argmin(val_loss_hist))
             loss_flag = False
 
         if (epoch % 1) == 0 or loss_flag: # this will always be true
@@ -529,7 +538,7 @@ class test_on_improved_val_lossv3(tf.keras.callbacks.Callback):
             else:
                 extn = ''
 
-            output_name = os.path.join(curr_path,'output_images_testing_during',str(epoch) + '_' + str(r_squared)[2:] + extn +'.png')
+            output_name = os.path.join(curr_path,'output_images_testing_during',str(num_k_fold),str(epoch) + '_' + str(r_squared)[2:] + extn +'.png')
 
             plt.savefig(fname = output_name)
 
