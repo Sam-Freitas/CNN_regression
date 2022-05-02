@@ -503,7 +503,7 @@ class test_on_improved_val_lossv3(tf.keras.callbacks.Callback):
             print("Earlystop:,", epoch - self.model.history.epoch[0] - np.argmin(val_loss_hist))
             loss_flag = False
 
-        if (epoch % 1) == 0 or loss_flag: # this will always be true
+        if (epoch % 100) == 0 or loss_flag: 
 
             print('Testing on epoch', str(epoch))
 

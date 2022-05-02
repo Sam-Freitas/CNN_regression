@@ -30,7 +30,7 @@ input_width = 130
 
 # epochs = 15000
 epochs = 100
-batch_size = 4
+batch_size = 128
 
 k_folds = glob.glob(os.path.join('data_arrays','*.npz'))
 num_k_folds = 0
@@ -66,7 +66,7 @@ for i in range(num_k_folds):
         filepath = 'checkpoints/checkpoints' + str(i) + '/cp.ckpt', monitor = 'val_loss',
         mode = 'min',save_best_only = True,save_weights_only = True, verbose = 1)
     on_epoch_end = test_on_improved_val_lossv3()
-    optimizer = tf.keras.optimizers.Adam(learning_rate = 0.00001,amsgrad=True) # 0.00001
+    optimizer = tf.keras.optimizers.Adam(learning_rate = 0.001,amsgrad=True) # 0.00001
     model.compile(optimizer=optimizer,loss='MeanAbsoluteError',metrics=['RootMeanSquaredError'])
 
     inital_epoch = (i*epochs)
