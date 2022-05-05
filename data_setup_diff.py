@@ -3,6 +3,7 @@ from natsort import natsorted, natsort_keygen
 import matplotlib.pyplot as plt
 import albumentations as A
 import os
+import cv2
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
 import numpy as np
 import pandas as pd
@@ -88,8 +89,13 @@ for count in tqdm(range(len(imgs_list))):
     if (this_metadata['Tissue'].values == this_tissue).squeeze():
         y.append(metadata_healthy.iloc[this_imgs_meta_idx,:]['Age'].values.squeeze())
         temp_img = np.loadtxt(this_img, comments='#',delimiter="\t",unpack=False)
+
+        temp_img = cv2.resize(temp_img,(128,128))
+
         X.append((temp_img - np.min(temp_img))/(np.max(temp_img) - np.min(temp_img)))#/np.max(temp_img))
         X_meta.append([str(this_metadata['Gender'].values.squeeze()),str(this_metadata['Tissue'].values.squeeze())])
+
+
 
 del count,this_img,temp_img
 X = np.asarray(X)
@@ -120,7 +126,7 @@ save_path = os.path.join(to_save,save_dir)
 
 os.makedirs(save_path, exist_ok = True)
 train_save_path = os.path.join(save_path,'All_data')
-# np.savez(train_save_path,X = X_norm,y = y_norm)
+np.savez(train_save_path,X = X_norm,y = y_norm)
 
 test_save_path = os.path.join(save_path,'test')
 np.savez(test_save_path,X = X_test,y = y_test)

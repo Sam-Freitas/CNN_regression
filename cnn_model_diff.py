@@ -9,7 +9,7 @@ import tqdm
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import MinMaxScaler, LabelEncoder
 from natsort import natsorted, natsort_keygen
-from CNN_regression_model import fully_connected_CNN_v2, fully_connected_CNN_v3,plot_model,test_on_improved_val_lossv3,diff_func
+from CNN_regression_model import fully_connected_CNN_v2, fully_connected_CNN_v3, fully_connected_CNN_v4, plot_model,test_on_improved_val_lossv3,diff_func
 from sklearn.preprocessing import PowerTransformer
 
 print('reading in data')
@@ -25,12 +25,14 @@ dropsize = 0.85
 blocksize = 5
 layers = 3
 sublayers = 0
-input_height = 74
-input_width = 130
+# input_height = 74
+# input_width = 130
+input_height = 128
+input_width = 128
 
 # epochs = 15000
-epochs = 1000
-batch_size = 128
+epochs = 15
+batch_size = 8
 
 k_folds = glob.glob(os.path.join('data_arrays','*.npz'))
 num_k_folds = 0
@@ -53,7 +55,7 @@ for i in range(num_k_folds):
     X_train, y_train = diff_func(X_train, y_train)
     X_val, y_val = diff_func(X_val, y_val)
 
-    model = fully_connected_CNN_v3(
+    model = fully_connected_CNN_v4(
         height=input_height,width=input_width,channels=2,
         use_dropout=True,inital_filter_size=inital_filter_size,keep_prob = dropsize,blocksize = blocksize,
         layers = layers, sub_layers = sublayers
@@ -64,11 +66,13 @@ for i in range(num_k_folds):
         filepath = 'checkpoints/checkpoints' + str(i) + '/cp.ckpt', monitor = 'val_loss',
         mode = 'min',save_best_only = True,save_weights_only = True, verbose = 1)
     on_epoch_end = test_on_improved_val_lossv3()
-    optimizer = tf.keras.optimizers.Adam(learning_rate = 0.001,amsgrad=True) # 0.00001
+    optimizer = tf.keras.optimizers.Adam(learning_rate = 0.001,amsgrad=False) # 0.00001
     model.compile(optimizer=optimizer,loss='MeanAbsoluteError',metrics=['RootMeanSquaredError'])
 
     inital_epoch = (i*epochs)
     this_epochs = inital_epoch + epochs
+
+    model.summary()
 
     history = model.fit([X_train],y_train,
         validation_data = ([X_val],y_val),
@@ -100,8 +104,8 @@ models = []
 for i in range(num_k_folds):
 
     models.append(
-        fully_connected_CNN_v3(
-        height=74,width=130,channels=2,
+        fully_connected_CNN_v4(
+        height=input_height,width=input_width,channels=2,
         use_dropout=False,inital_filter_size=inital_filter_size,keep_prob = dropsize,blocksize = blocksize,
         layers = layers, sub_layers = sublayers)
     )
@@ -132,7 +136,7 @@ test_error = np.sum(np.abs(y_test-avg_prediction_test))/len(y_test)
 train_error = np.sum(np.abs(y_train-avg_prediction_train))/len(y_train)
 
 plt.figure(1)
-plt.scatter(y_train,avg_prediction_train,color = 'r',alpha=0.2, label = 'training data')
+plt.scatter(y_train,avg_prediction_train,color = 'r',alpha=0.05, label = 'training data')
 plt.scatter(y_test,avg_prediction_test,color = 'b',alpha=0.3, label = 'testing data')
 plt.plot(np.linspace(np.min(y_train), np.max(y_train)),np.linspace(np.min(y_train), np.max(y_train)))
 
