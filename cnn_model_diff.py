@@ -27,12 +27,11 @@ layers = 3
 sublayers = 0
 # input_height = 74
 # input_width = 130
-input_height = 128
-input_width = 128
+input_height = input_width = 130
 
 # epochs = 15000
-epochs = 15
-batch_size = 8
+epochs = 100
+batch_size = 128
 
 k_folds = glob.glob(os.path.join('data_arrays','*.npz'))
 num_k_folds = 0

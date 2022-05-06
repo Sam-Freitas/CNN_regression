@@ -90,7 +90,7 @@ for count in tqdm(range(len(imgs_list))):
         y.append(metadata_healthy.iloc[this_imgs_meta_idx,:]['Age'].values.squeeze())
         temp_img = np.loadtxt(this_img, comments='#',delimiter="\t",unpack=False)
 
-        temp_img = cv2.resize(temp_img,(128,128))
+        temp_img = cv2.resize(temp_img,(130,130))
 
         X.append((temp_img - np.min(temp_img))/(np.max(temp_img) - np.min(temp_img)))#/np.max(temp_img))
         X_meta.append([str(this_metadata['Gender'].values.squeeze()),str(this_metadata['Tissue'].values.squeeze())])
@@ -132,7 +132,7 @@ test_save_path = os.path.join(save_path,'test')
 np.savez(test_save_path,X = X_test,y = y_test)
 
 n_kfolds = 10
-skf = rskf(n_splits = 10, n_repeats = 1)
+skf = rskf(n_splits = 10, n_repeats = 1, random_state=50)
 k = np.asarray(list(range(len(y_norm_init))))
 
 count = 0
