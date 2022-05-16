@@ -25,6 +25,7 @@ dropsize = 0.85
 blocksize = 5
 layers = 3
 sublayers = 0
+age_normalizer = 1
 # input_height = 74
 # input_width = 130
 input_height = input_width = 130
@@ -42,6 +43,8 @@ for npzs in k_folds:
 temp = np.load('data_arrays/All_data.npz')
 X_norm,y_norm = temp['X'],temp['y']
 
+training_histories = []
+
 for i in range(num_k_folds):
     temp = np.load('data_arrays/train'+ str(i) +'.npz')
     train_idx = temp['idx']
@@ -51,8 +54,8 @@ for i in range(num_k_folds):
     X_train, y_train = X_norm[train_idx],y_norm[train_idx]
     X_val, y_val = X_norm[val_idx],y_norm[val_idx]
 
-    X_train, y_train = diff_func(X_train, y_train)
-    X_val, y_val = diff_func(X_val, y_val)
+    X_train, y_train = diff_func(X_train, y_train,age_normalizer=age_normalizer)
+    X_val, y_val = diff_func(X_val, y_val,age_normalizer=age_normalizer)
 
     model = fully_connected_CNN_v4(
         height=input_height,width=input_width,channels=2,
@@ -64,8 +67,9 @@ for i in range(num_k_folds):
     save_checkpoints = tf.keras.callbacks.ModelCheckpoint(
         filepath = 'checkpoints/checkpoints' + str(i) + '/cp.ckpt', monitor = 'val_loss',
         mode = 'min',save_best_only = True,save_weights_only = True, verbose = 1)
+    earlystop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=100)
     on_epoch_end = test_on_improved_val_lossv3()
-    optimizer = tf.keras.optimizers.Adam(learning_rate = 0.001,amsgrad=False) # 0.00001
+    optimizer = tf.keras.optimizers.Adam(learning_rate = 0.001/age_normalizer,amsgrad=False) # 0.001
     model.compile(optimizer=optimizer,loss='MeanAbsoluteError',metrics=['RootMeanSquaredError'])
 
     inital_epoch = (i*epochs)
@@ -76,9 +80,11 @@ for i in range(num_k_folds):
     history = model.fit([X_train],y_train,
         validation_data = ([X_val],y_val),
         batch_size=batch_size,epochs=this_epochs, initial_epoch = inital_epoch,
-        callbacks=[on_epoch_end,save_checkpoints],
+        callbacks=[on_epoch_end,save_checkpoints,earlystop],
         verbose=1,
         sample_weight = sample_weights) 
+
+    training_histories.append(history)
 
     model.save_weights('model_weights/model_weights' + str(i) + '/model_weights')
 
@@ -100,20 +106,28 @@ def stacked_dataset(members, inputX):
 	return stackX
 
 models = []
+count = 0
 for i in range(num_k_folds):
 
-    models.append(
-        fully_connected_CNN_v4(
-        height=input_height,width=input_width,channels=2,
-        use_dropout=False,inital_filter_size=inital_filter_size,keep_prob = dropsize,blocksize = blocksize,
-        layers = layers, sub_layers = sublayers)
-    )
-    checkpoint_path = 'checkpoints/checkpoints' + str(i) + '/cp.ckpt'
-    models[i].load_weights(checkpoint_path)
-    optimizer = tf.keras.optimizers.Adam(learning_rate=0.001,amsgrad=True) # 0.00001
-    models[i].compile(optimizer=optimizer,loss='MeanAbsoluteError',metrics=['RootMeanSquaredError'])
+    this_train_hist = training_histories[i].history['val_loss']
 
-X_train, y_train = diff_func(X_norm, y_norm)
+    if (np.max(this_train_hist) - np.min(this_train_hist)) > (1/age_normalizer):
+
+        models.append(
+            fully_connected_CNN_v4(
+            height=input_height,width=input_width,channels=2,
+            use_dropout=False,inital_filter_size=inital_filter_size,keep_prob = dropsize,blocksize = blocksize,
+            layers = layers, sub_layers = sublayers)
+        )
+        checkpoint_path = 'checkpoints/checkpoints' + str(i) + '/cp.ckpt'
+        models[count].load_weights(checkpoint_path)
+        optimizer = tf.keras.optimizers.Adam(learning_rate=0.001,amsgrad=True) # 0.00001
+        models[count].compile(optimizer=optimizer,loss='MeanAbsoluteError',metrics=['RootMeanSquaredError'])
+
+        count = count + 1
+
+print("using:", count, "of the cross valid")
+X_train, y_train = diff_func(X_norm, y_norm,age_normalizer=age_normalizer)
 
 ensemble_prediction_test = stacked_dataset(models, X_test)
 ensemble_prediction_train = stacked_dataset(models, X_train)
@@ -133,11 +147,13 @@ print("Train",r_squared_train)
 
 test_error = np.sum(np.abs(y_test-avg_prediction_test))/len(y_test)
 train_error = np.sum(np.abs(y_train-avg_prediction_train))/len(y_train)
+m, b = np.polyfit(y_test,avg_prediction_test, deg = 1)
 
 plt.figure(1)
 plt.scatter(y_train,avg_prediction_train,color = 'r',alpha=0.05, label = 'training data')
 plt.scatter(y_test,avg_prediction_test,color = 'b',alpha=0.3, label = 'testing data')
 plt.plot(np.linspace(np.min(y_train), np.max(y_train)),np.linspace(np.min(y_train), np.max(y_train)))
+plt.plot(y_test, m*y_test + b,'m-')
 
 plt.text(np.min(y_train),np.max(y_train),"r^2: " + str(r_squared_train),fontsize = 12, color = 'r')
 plt.text(np.min(y_train),np.max(y_train)-(0.2)*np.max(y_train),"r^2: " + str(r_squared_test),fontsize = 12, color = 'b')

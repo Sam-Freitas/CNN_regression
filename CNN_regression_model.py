@@ -538,7 +538,7 @@ class test_on_improved_val_lossv3(tf.keras.callbacks.Callback):
             print("Earlystop:,", epoch - self.model.history.epoch[0] - np.argmin(val_loss_hist))
             loss_flag = False
 
-        if (epoch % 100) == 0 or loss_flag: 
+        if loss_flag: #(epoch % 100) == 0 or loss_flag: 
 
             print('Testing on epoch', str(epoch))
 
@@ -563,15 +563,19 @@ class test_on_improved_val_lossv3(tf.keras.callbacks.Callback):
             print("Current r_squared test:",r_squared)
 
             res = dict()
+            m, b = np.polyfit(y_test,predicted, deg = 1)
+            res['b'] = b
+            res['m'] = m
             for key in eval_result: res[key] = round(eval_result[key],6)
 
             plt.ioff()
             plt.scatter(y_test,predicted,color = 'r',alpha=0.2)
             plt.plot(np.linspace(np.min(y_test), np.max(y_test)),np.linspace(np.min(y_test), np.max(y_test)))
             plt.text(np.min(y_test),np.max(y_test),"r^2: " + str(r_squared),fontsize = 12)
-            plt.title(json.dumps(res).replace(',', '\n'),fontsize = 10)
+            plt.title(json.dumps(res).replace(',', '\n'),fontsize = 8)
             plt.xlabel('Expected Age (years)')
             plt.ylabel('Predicted Age (years)')
+            plt.plot(y_test, m*y_test + b,'m-')
 
             if loss_flag:
                 extn = 'best_'

@@ -17,28 +17,6 @@ from sklearn.model_selection import RepeatedStratifiedKFold as rskf
 import random
 # from minepy.mine import MINE
 
-def diff_func(X_norm,y_norm, limit_data = False):
-    print('Diff function generation')
-    y_diff = []
-    X_diff = []
-    num_loops = y_norm.shape[0]
-    count = 0
-    for i in tqdm(range(num_loops)):
-        X1 = X_norm[i]
-        y1 = y_norm[i]
-        for j in range(num_loops):
-            X2 = X_norm[j]
-            y2 = y_norm[j]
-            X_diff.append(np.concatenate([np.atleast_3d(X1),np.atleast_3d(X2)],axis = -1).squeeze())
-            y_temp = (y1-y2)/age_normalizer
-            y_temp = np.round(y_temp,3)
-            y_diff.append(y_temp)
-            count = count + 1
-    X_diff = np.asarray(X_diff)
-    y_diff = np.asarray(y_diff)
-
-    return X_diff, y_diff
-
 def get_n_samples(n,this_array,this_seed = 50):
 
     norm_idx = np.arange(this_array.shape[0])
@@ -49,7 +27,6 @@ def get_n_samples(n,this_array,this_seed = 50):
     new_idx = temp
 
     return new_idx, norm_idx
-
 
 age_normalizer = 1
 print('loading in data')

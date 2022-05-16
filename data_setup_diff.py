@@ -18,7 +18,7 @@ from sklearn.model_selection import RepeatedStratifiedKFold as rskf
 import random
 # from minepy.mine import MINE
 
-def diff_func(X_norm,y_norm, limit_data = False):
+def diff_func(X_norm,y_norm, limit_data = False, age_normalizer = 1):
     print('Diff function generation')
     y_diff = []
     X_diff = []
@@ -53,6 +53,7 @@ def get_n_samples(n,this_array,this_seed = 50):
 
 
 age_normalizer = 1
+img_size = 130
 print('loading in data')
 # data_path = '/groups/sutphin/NN_trainings/IGTD/Results/Liver;liver hepatocytes_1_9620/data'
 data_path = '/groups/sutphin/NN_trainings/IGTD/Results/All_tissues_1_9620/data'
@@ -90,7 +91,7 @@ for count in tqdm(range(len(imgs_list))):
         y.append(metadata_healthy.iloc[this_imgs_meta_idx,:]['Age'].values.squeeze())
         temp_img = np.loadtxt(this_img, comments='#',delimiter="\t",unpack=False)
 
-        temp_img = cv2.resize(temp_img,(130,130))
+        temp_img = cv2.resize(temp_img,(img_size,img_size))
 
         X.append((temp_img - np.min(temp_img))/(np.max(temp_img) - np.min(temp_img)))#/np.max(temp_img))
         X_meta.append([str(this_metadata['Gender'].values.squeeze()),str(this_metadata['Tissue'].values.squeeze())])
@@ -113,7 +114,7 @@ X_norm_test, y_norm_test = X_norm[test_idx], y_norm[test_idx]
 X_norm, y_norm = X_norm[norm_idx], y_norm[norm_idx]
 
 # run the diff function only for the test set
-X_test,y_test = diff_func(X_norm_test, y_norm_test)
+X_test,y_test = diff_func(X_norm_test, y_norm_test, age_normalizer = age_normalizer)
 
 y_norm_init = y_norm.copy()
 X_norm_init = X_norm.copy()
