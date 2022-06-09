@@ -31,7 +31,7 @@ age_normalizer = 1
 input_height = input_width = 130
 
 # epochs = 15000
-epochs = 100
+epochs = 1000
 batch_size = 128
 
 k_folds = glob.glob(os.path.join('data_arrays','*.npz'))
@@ -67,9 +67,10 @@ for i in range(num_k_folds):
     save_checkpoints = tf.keras.callbacks.ModelCheckpoint(
         filepath = 'checkpoints/checkpoints' + str(i) + '/cp.ckpt', monitor = 'val_loss',
         mode = 'min',save_best_only = True,save_weights_only = True, verbose = 1)
-    earlystop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=100)
+    earlystop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = 150)
+    Reduce_LR = tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss',factor=0.1,patience=100)
     on_epoch_end = test_on_improved_val_lossv3()
-    optimizer = tf.keras.optimizers.Adam(learning_rate = 0.001/age_normalizer,amsgrad=False) # 0.001
+    optimizer = tf.keras.optimizers.Adam(learning_rate = 0.001,amsgrad=False) # 0.001
     model.compile(optimizer=optimizer,loss='MeanAbsoluteError',metrics=['RootMeanSquaredError'])
 
     inital_epoch = (i*epochs)
@@ -80,7 +81,7 @@ for i in range(num_k_folds):
     history = model.fit([X_train],y_train,
         validation_data = ([X_val],y_val),
         batch_size=batch_size,epochs=this_epochs, initial_epoch = inital_epoch,
-        callbacks=[on_epoch_end,save_checkpoints,earlystop],
+        callbacks=[on_epoch_end,save_checkpoints,earlystop,Reduce_LR],
         verbose=1,
         sample_weight = sample_weights) 
 
