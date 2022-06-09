@@ -18,7 +18,7 @@ import random
 
 # set up variables 
 
-this_tissue = 'Adipose'
+this_tissue = 'Blood;PBMC'
 print('loading data')
 temp = np.load('dense_regression/data_arrays/train.npz')
 X_train,y_train = temp['X'],temp['y']

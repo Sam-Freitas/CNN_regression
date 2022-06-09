@@ -14,6 +14,7 @@ from scipy import stats
 from scipy.spatial.distance import correlation as dist_corr_eucl
 from numpy.polynomial import Polynomial
 from sklearn.model_selection import train_test_split
+from sklearn.model_selection import RepeatedStratifiedKFold as rskf
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 import random
@@ -74,52 +75,44 @@ def add_2_features(data):
 
     return data
 
-def diff_func(X_norm,y_norm, limit_data = False):
-
-    if not limit_data:
-        print('Diff function generation')
-        y_diff = []
-        X_diff = []
-        num_loops = y_norm.shape[0]
-        count = 0
-        for i in tqdm(range(num_loops)):
-            X1 = X_norm[i]
-            y1 = y_norm[i]
-            for j in range(num_loops):
-                X2 = X_norm[j]
-                y2 = y_norm[j]
-                X_diff.append(np.concatenate([np.atleast_3d(X1),np.atleast_3d(X2)],axis = -1).squeeze())
-                y_temp = (y1-y2)/age_normalizer
-                y_temp = np.round(y_temp,3)
-                y_diff.append(y_temp)
-                count = count + 1
-        X_diff = np.asarray(X_diff)
-        y_diff = np.asarray(y_diff)
-    else:
-        print('Diff function generation')
-        y_diff = []
-        X_diff = []
-        num_loops = y_norm.shape[0]
-        count = 0
-        for i in tqdm(range(num_loops)):
-            X1 = X_norm[i]
-            y1 = y_norm[i]
-            for j in np.unique(np.random.randint(low=0,high=y_norm.shape[0],size=(int(round(y_norm.shape[0]/2)),1))):
-                X2 = X_norm[j]
-                y2 = y_norm[j]
-                X_diff.append(np.concatenate([np.atleast_3d(X1),np.atleast_3d(X2)],axis = -1).squeeze())
-                y_temp = (y1-y2)/age_normalizer
-                y_temp = np.round(y_temp,3)
-                y_diff.append(y_temp)
-                count = count + 1
-        X_diff = np.asarray(X_diff)
-        y_diff = np.asarray(y_diff)
-
+def diff_func(X_norm,y_norm, limit_data = False, age_normalizer = 1):
+    print('Diff function generation')
+    y_diff = []
+    X_diff = []
+    num_loops = y_norm.shape[0]
+    count = 0
+    for i in tqdm(range(num_loops)):
+        X1 = X_norm[i]
+        y1 = y_norm[i]
+        for j in range(num_loops):
+            X2 = X_norm[j]
+            y2 = y_norm[j]
+            X_diff.append(np.concatenate([np.atleast_3d(X1),np.atleast_3d(X2)],axis = -1).squeeze())
+            y_temp = (y1-y2)/age_normalizer
+            y_temp = np.round(y_temp,3)
+            y_diff.append(y_temp)
+            count = count + 1
+    X_diff = np.asarray(X_diff)
+    y_diff = np.asarray(y_diff)
 
     return X_diff, y_diff
 
+def get_n_samples(n,this_array,this_seed = 50):
+
+    norm_idx = np.arange(this_array.shape[0])
+    np.random.seed(this_seed)
+    new_idx = np.unique(np.random.randint(low=0,high=norm_idx.shape[0],size=(n,1)))
+    temp = norm_idx[new_idx]
+    norm_idx = np.delete(norm_idx,new_idx)
+    new_idx = temp
+
+    return new_idx, norm_idx
+
 print('loading in data')
-data = pd.read_csv('dense_regression/normalized_training_data_rot.csv',header=0, index_col=0)
+try:
+    data = pd.read_csv('dense_regression/normalized_training_data_rot.csv',header=0, index_col=0)
+except:
+    data = pd.read_csv('/groups/sutphin/NN_trainings/IGTD/Data/normalized_training_data_rot.csv',header = 0, index_col= 0)
 metadata = pd.read_csv('dense_regression/meta_filtered.csv',header=0, index_col=0)
 
 # sort data 
@@ -127,7 +120,7 @@ metadata = metadata.sort_values(by = ['SRR.ID'], ascending = True)
 data = data.sort_index(axis = 0, ascending = True)
 
 print('parsing data')
-age_normalizer = 128
+age_normalizer = 1
 # this_tissue = 'Liver;liver hepatocytes'
 # this_tissue = 'All_tissues'
 this_tissue = 'Blood;PBMC'
@@ -175,99 +168,197 @@ X_meta_raw = np.asarray(X_meta)
 X_norm = X_raw
 y_norm = y_raw
 
-# X_meta_cleaned = X_meta_raw.copy()
-# for i in range(X_meta_cleaned.shape[0]):
-#     temp_meta = X_meta_raw[i][1].lower()
-#     X_meta_cleaned[i][1] = temp_meta.replace('/','-')
 
-# le = LabelEncoder()
-# X_meta_norm = np.zeros(shape=X_meta_cleaned.shape)
-# for count,this_feature in enumerate(X_meta_cleaned.transpose()):
-#     X_meta_norm[:,count] = le.fit_transform(this_feature)
+# remove 5 random samples for testing later 
+test_idx, norm_idx = get_n_samples(5,y_norm,this_seed = 50)
 
-# generate 10 random idx for the double blind testing 
-norm_idx = np.arange(y_norm.shape[0])
-np.random.seed(50)
-test_idx = np.unique(np.random.randint(low=0,high=norm_idx.shape[0],size=(5,1)))
-temp = norm_idx[test_idx]
-norm_idx = np.delete(norm_idx,test_idx)
-test_idx = temp
-del temp
-
-# generate the test train/val split
+# split the test set off from the rest (to be k folded)
 X_norm_test, y_norm_test = X_norm[test_idx], y_norm[test_idx]
 X_norm, y_norm = X_norm[norm_idx], y_norm[norm_idx]
 
-norm_idx = np.arange(y_norm.shape[0])
-np.random.seed(50)
-val_idx = np.unique(np.random.randint(low=0,high=norm_idx.shape[0],size=(50,1)))
-temp = norm_idx[val_idx]
-norm_idx = np.delete(norm_idx,val_idx)
-val_idx = temp
-del temp
+# run the diff function only for the test set
+X_test,y_test = diff_func(X_norm_test, y_norm_test, age_normalizer = age_normalizer)
 
-# generate the test train/val split
-X_norm_val, y_norm_val = X_norm[val_idx], y_norm[val_idx]
-X_norm, y_norm = X_norm[norm_idx], y_norm[norm_idx]
+y_norm_init = y_norm.copy()
+X_norm_init = X_norm.copy()
 
-# generate the diff data with seperate blinded set
-X_diff,y_diff = diff_func(X_norm,y_norm,limit_data=False)
-X_diff_val,y_diff_val = diff_func(X_norm_val,y_norm_val)
-X_diff_test,y_diff_test = diff_func(X_norm_test, y_norm_test)
+temp = np.zeros(shape=(1,))
 
-
-# training data
-X_train = X_diff
-y_train = y_diff
-# validation data
-X_val = X_diff_val
-y_val = y_diff_val
-# test data
-X_test = X_diff_test
-y_test = y_diff_test
-
-# val_idx = []
-# not_enough_data_idx = []
-# for unique_num in np.unique(y_diff): #[0::2]:
-#     indices = np.where(y_diff==unique_num)
-#     if indices[0].shape[0] > 10:
-#         val_idx.extend(np.where(y_diff==unique_num)[0][0:5])
-#     elif indices[0].shape[0] > 1:
-#         num_to_exd = round(indices[0].shape[0]/2)
-#         val_idx.extend(np.where(y_diff==unique_num)[0][0:num_to_exd])
-#     else:
-#         not_enough_data_idx.append(unique_num)
-# val_idx = np.asarray(val_idx)
-# not_enough_data_values = np.asarray(not_enough_data_idx)
-
-# train_idx = np.arange(y_diff.shape[0])
-# train_idx = np.delete(train_idx,val_idx)
-
-# # training data
-# X_train = X_diff[train_idx]
-# y_train = y_diff[train_idx]
-# # validation data
-# X_val = X_diff[val_idx]
-# y_val = y_diff[val_idx]
-# # test data
-# X_test = X_diff_test
-# y_test = y_diff_test
-
-print('Saving data arrays')
-# set up saving 
 to_save = os.path.split(__file__)[0]
 save_dir = 'data_arrays'
 save_path = os.path.join(to_save,save_dir)
 
 os.makedirs(save_path, exist_ok = True)
-
-train_save_path = os.path.join(save_path,'train')
-np.savez(train_save_path,X = X_train,y = y_train)
-
-val_save_path = os.path.join(save_path,'val')
-np.savez(val_save_path,X = X_val,y = y_val)
+train_save_path = os.path.join(save_path,'All_data')
+np.savez(train_save_path,X = X_norm,y = y_norm)
 
 test_save_path = os.path.join(save_path,'test')
 np.savez(test_save_path,X = X_test,y = y_test)
 
+n_kfolds = 10
+skf = rskf(n_splits = 10, n_repeats = 1, random_state=50)
+k = np.asarray(list(range(len(y_norm_init))))
+
+count = 0
+for train_idx,val_idx in skf.split(k,y_norm_init):
+
+    print(val_idx)
+
+    if count == 0:
+        temp = val_idx
+    else:
+        temp = np.append(temp,val_idx)
+
+    train_save_path = os.path.join(save_path,'val' + str(count))
+    np.savez(train_save_path,idx = val_idx)
+
+    train_save_path = os.path.join(save_path,'train' + str(count))
+    np.savez(train_save_path,idx = train_idx)
+    count += 1
+
+print('validation uses',len(np.unique(np.asarray(temp))),'of',len(np.unique(np.asarray(k))), 'in dataset')
 print('eof')
+
+# # X_meta_cleaned = X_meta_raw.copy()
+# # for i in range(X_meta_cleaned.shape[0]):
+# #     temp_meta = X_meta_raw[i][1].lower()
+# #     X_meta_cleaned[i][1] = temp_meta.replace('/','-')
+
+# # le = LabelEncoder()
+# # X_meta_norm = np.zeros(shape=X_meta_cleaned.shape)
+# # for count,this_feature in enumerate(X_meta_cleaned.transpose()):
+# #     X_meta_norm[:,count] = le.fit_transform(this_feature)
+
+# # generate 10 random idx for the double blind testing 
+# norm_idx = np.arange(y_norm.shape[0])
+# np.random.seed(50)
+# test_idx = np.unique(np.random.randint(low=0,high=norm_idx.shape[0],size=(5,1)))
+# temp = norm_idx[test_idx]
+# norm_idx = np.delete(norm_idx,test_idx)
+# test_idx = temp
+# del temp
+
+# # generate the test train/val split
+# X_norm_test, y_norm_test = X_norm[test_idx], y_norm[test_idx]
+# X_norm, y_norm = X_norm[norm_idx], y_norm[norm_idx]
+
+# norm_idx = np.arange(y_norm.shape[0])
+# np.random.seed(50)
+# val_idx = np.unique(np.random.randint(low=0,high=norm_idx.shape[0],size=(50,1)))
+# temp = norm_idx[val_idx]
+# norm_idx = np.delete(norm_idx,val_idx)
+# val_idx = temp
+# del temp
+
+# # generate the test train/val split
+# X_norm_val, y_norm_val = X_norm[val_idx], y_norm[val_idx]
+# X_norm, y_norm = X_norm[norm_idx], y_norm[norm_idx]
+
+# # generate the diff data with seperate blinded set
+# X_diff,y_diff = diff_func(X_norm,y_norm,limit_data=False)
+# X_diff_val,y_diff_val = diff_func(X_norm_val,y_norm_val)
+# X_diff_test,y_diff_test = diff_func(X_norm_test, y_norm_test)
+
+
+# # training data
+# X_train = X_diff
+# y_train = y_diff
+# # validation data
+# X_val = X_diff_val
+# y_val = y_diff_val
+# # test data
+# X_test = X_diff_test
+# y_test = y_diff_test
+
+# # val_idx = []
+# # not_enough_data_idx = []
+# # for unique_num in np.unique(y_diff): #[0::2]:
+# #     indices = np.where(y_diff==unique_num)
+# #     if indices[0].shape[0] > 10:
+# #         val_idx.extend(np.where(y_diff==unique_num)[0][0:5])
+# #     elif indices[0].shape[0] > 1:
+# #         num_to_exd = round(indices[0].shape[0]/2)
+# #         val_idx.extend(np.where(y_diff==unique_num)[0][0:num_to_exd])
+# #     else:
+# #         not_enough_data_idx.append(unique_num)
+# # val_idx = np.asarray(val_idx)
+# # not_enough_data_values = np.asarray(not_enough_data_idx)
+
+# # train_idx = np.arange(y_diff.shape[0])
+# # train_idx = np.delete(train_idx,val_idx)
+
+# # # training data
+# # X_train = X_diff[train_idx]
+# # y_train = y_diff[train_idx]
+# # # validation data
+# # X_val = X_diff[val_idx]
+# # y_val = y_diff[val_idx]
+# # # test data
+# # X_test = X_diff_test
+# # y_test = y_diff_test
+
+# print('Saving data arrays')
+# # set up saving 
+# to_save = os.path.split(__file__)[0]
+# save_dir = 'data_arrays'
+# save_path = os.path.join(to_save,save_dir)
+
+# os.makedirs(save_path, exist_ok = True)
+
+# train_save_path = os.path.join(save_path,'train')
+# np.savez(train_save_path,X = X_train,y = y_train)
+
+# val_save_path = os.path.join(save_path,'val')
+# np.savez(val_save_path,X = X_val,y = y_val)
+
+# test_save_path = os.path.join(save_path,'test')
+# np.savez(test_save_path,X = X_test,y = y_test)
+
+# print('eof')
+
+
+
+
+# def diff_func_old(X_norm,y_norm, limit_data = False):
+
+#     if not limit_data:
+#         print('Diff function generation')
+#         y_diff = []
+#         X_diff = []
+#         num_loops = y_norm.shape[0]
+#         count = 0
+#         for i in tqdm(range(num_loops)):
+#             X1 = X_norm[i]
+#             y1 = y_norm[i]
+#             for j in range(num_loops):
+#                 X2 = X_norm[j]
+#                 y2 = y_norm[j]
+#                 X_diff.append(np.concatenate([np.atleast_3d(X1),np.atleast_3d(X2)],axis = -1).squeeze())
+#                 y_temp = (y1-y2)/age_normalizer
+#                 y_temp = np.round(y_temp,3)
+#                 y_diff.append(y_temp)
+#                 count = count + 1
+#         X_diff = np.asarray(X_diff)
+#         y_diff = np.asarray(y_diff)
+#     else:
+#         print('Diff function generation')
+#         y_diff = []
+#         X_diff = []
+#         num_loops = y_norm.shape[0]
+#         count = 0
+#         for i in tqdm(range(num_loops)):
+#             X1 = X_norm[i]
+#             y1 = y_norm[i]
+#             for j in np.unique(np.random.randint(low=0,high=y_norm.shape[0],size=(int(round(y_norm.shape[0]/2)),1))):
+#                 X2 = X_norm[j]
+#                 y2 = y_norm[j]
+#                 X_diff.append(np.concatenate([np.atleast_3d(X1),np.atleast_3d(X2)],axis = -1).squeeze())
+#                 y_temp = (y1-y2)/age_normalizer
+#                 y_temp = np.round(y_temp,3)
+#                 y_diff.append(y_temp)
+#                 count = count + 1
+#         X_diff = np.asarray(X_diff)
+#         y_diff = np.asarray(y_diff)
+
+
+#     return X_diff, y_diff
