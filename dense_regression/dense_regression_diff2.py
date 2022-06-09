@@ -28,8 +28,8 @@ X_test,y_test = temp['X'],temp['y']
 num = (X_test.shape[1],X_test.shape[2])
 age_normalizer = 1
 
-epochs = 5
-batch_size = 128
+epochs = 100
+batch_size = 512
 
 k_folds = glob.glob(os.path.join('dense_regression/data_arrays','*.npz'))
 num_k_folds = 0
@@ -60,7 +60,7 @@ for i in range(num_k_folds):
     save_checkpoints = tf.keras.callbacks.ModelCheckpoint(
         filepath = 'dense_regression/checkpoints/checkpoints' + str(i) + '/cp.ckpt', monitor = 'val_loss',
         mode = 'min',save_best_only = True,save_weights_only = True, verbose = 1)
-    earlystop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = 150)
+    earlystop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = 10)
     Reduce_LR = tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss',factor=0.1,patience=100)
     on_epoch_end = test_on_improved_val_lossv3()
     optimizer = tf.keras.optimizers.Adam(learning_rate = 0.001,amsgrad=False) # 0.001
@@ -80,7 +80,7 @@ for i in range(num_k_folds):
 
     training_histories.append(history)
 
-    model.save_weights('dense_regression/model_weights/model_weights' + str(i) + '/model_weights')
+    # model.save_weights('dense_regression/model_weights/model_weights' + str(i) + '/model_weights')
 
     del model
 
@@ -105,7 +105,7 @@ for i in range(num_k_folds):
 
     this_train_hist = training_histories[i].history['val_loss']
 
-    if (np.max(this_train_hist) - np.min(this_train_hist)) > (1/age_normalizer):
+    if (np.max(this_train_hist) - np.min(this_train_hist)) > (0/age_normalizer):
 
         models.append(fully_connected_dense_modelv2(num_features = num,use_dropout=True,dropout_amount = 0.1))
 

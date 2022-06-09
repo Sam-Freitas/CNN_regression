@@ -28,9 +28,9 @@ def fully_connected_dense_modelv2(num_features = 2048, use_dropout = False, drop
     d = tf.keras.layers.Flatten()(d)
     d = Dropout(dropout_amount)(d, training = use_dropout)
     # d = tf.keras.layers.GaussianNoise(dropout_amount/2)(d, training = use_dropout)
-    d = Dense(6000)(d)
-    d = Activation('elu')(d)
-    d = Dropout(dropout_amount)(d, training = use_dropout)
+    d = Dense(128)(d)
+    d = Activation('swish')(d)
+    d = Dropout(0.75)(d, training = use_dropout)
     # d = tf.keras.layers.GaussianNoise(dropout_amount/2)(d, training = use_dropout)
 
     # final output layes for data exportation
