@@ -29,7 +29,7 @@ num = (X_test.shape[1],X_test.shape[2])
 age_normalizer = 1
 
 epochs = 100
-batch_size = 512
+batch_size = 128
 
 k_folds = glob.glob(os.path.join('dense_regression/data_arrays','*.npz'))
 num_k_folds = 0
@@ -60,7 +60,7 @@ for i in range(num_k_folds):
     save_checkpoints = tf.keras.callbacks.ModelCheckpoint(
         filepath = 'dense_regression/checkpoints/checkpoints' + str(i) + '/cp.ckpt', monitor = 'val_loss',
         mode = 'min',save_best_only = True,save_weights_only = True, verbose = 1)
-    earlystop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = 10)
+    earlystop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = 100)
     Reduce_LR = tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss',factor=0.1,patience=100)
     on_epoch_end = test_on_improved_val_lossv3()
     optimizer = tf.keras.optimizers.Adam(learning_rate = 0.001,amsgrad=False) # 0.001
