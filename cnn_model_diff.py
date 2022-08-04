@@ -11,29 +11,38 @@ from sklearn.preprocessing import MinMaxScaler, LabelEncoder
 from natsort import natsorted, natsort_keygen
 from CNN_regression_model import fully_connected_CNN_v2, fully_connected_CNN_v3, fully_connected_CNN_v4, plot_model,test_on_improved_val_lossv3,diff_func
 from sklearn.preprocessing import PowerTransformer
+from pathlib import Path
 
 print('reading in data')
 plt.ioff()
 
-this_tissue = 'Blood;PBMC_10_removed'
+this_tissue = 'remove_15_size130_dense128'
 
 temp = np.load('data_arrays/test.npz')
 X_test,y_test = temp['X'],temp['y']
 
+# inital_filter_size = 8
+# dropsize = 0.85
+# blocksize = 5
+# layers = 3
+# sublayers = 0
+# age_normalizer = 1
+# # input_height = 74
+# # input_width = 130
+# input_height = input_width = 130
+# epochs = 15000
+# batch_size = 128
+
 inital_filter_size = 8
-dropsize = 0.85
+dropsize = 0.95
 blocksize = 5
 layers = 3
 sublayers = 0
 age_normalizer = 1
-# input_height = 74
-# input_width = 130
 input_height = input_width = 130
 
-# epochs = 15000
-epochs = 1000
-# batch_size = 128
-batch_size = 64
+epochs = 100
+batch_size = 128
 
 k_folds = glob.glob(os.path.join('data_arrays','*.npz'))
 num_k_folds = 0
@@ -44,7 +53,10 @@ for npzs in k_folds:
 temp = np.load('data_arrays/All_data.npz')
 X_norm,y_norm = temp['X'],temp['y']
 
+assert X_norm.shape[1] == input_height and input_height == X_norm.shape[2]
+
 training_histories = []
+val_loss_hist = []
 
 for i in range(num_k_folds):
     temp = np.load('data_arrays/train'+ str(i) +'.npz')
@@ -63,13 +75,14 @@ for i in range(num_k_folds):
         use_dropout=True,inital_filter_size=inital_filter_size,keep_prob = dropsize,blocksize = blocksize,
         layers = layers, sub_layers = sublayers
     )
-    # sample_weights = (np.abs(y_train)+1)**(1/2)
-    sample_weights = np.ones(y_train.shape)
+    sample_weights = (np.abs(y_train)+1)**(1/2)
+    # sample_weights = np.ones(y_train.shape)
 
     save_checkpoints = tf.keras.callbacks.ModelCheckpoint(
         filepath = 'checkpoints/checkpoints' + str(i) + '/cp.ckpt', monitor = 'val_loss',
         mode = 'min',save_best_only = True,save_weights_only = True, verbose = 1)
-    earlystop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = 50) # patience 250
+    earlystop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = 50, 
+        restore_best_weights=True) # patience 250
     Reduce_LR = tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss',factor=0.1,patience=100)
     on_epoch_end = test_on_improved_val_lossv3()
     optimizer = tf.keras.optimizers.Adam(learning_rate = 0.001,amsgrad=False) # 0.001
@@ -88,8 +101,13 @@ for i in range(num_k_folds):
         sample_weight = sample_weights) 
 
     training_histories.append(history)
+    val_loss_hist.append(history.history['val_loss'])
 
-    # model.save_weights('model_weights/model_weights' + str(i) + '/model_weights')
+    df = pd.DataFrame(val_loss_hist)
+    df.to_csv('checkpoints/val_loss.csv')
+
+    # Path('model_weights').mkdir( parents=True, exist_ok=True )
+    # model.save_weights('model_weights/model_weights' + str(i) + '.h5')
 
     del model
 
@@ -110,6 +128,7 @@ def stacked_dataset(members, inputX):
 
 models = []
 count = 0
+print('Stacking models')
 for i in range(num_k_folds):
 
     this_train_hist = training_histories[i].history['val_loss']

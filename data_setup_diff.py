@@ -96,8 +96,6 @@ for count in tqdm(range(len(imgs_list))):
         X.append((temp_img - np.min(temp_img))/(np.max(temp_img) - np.min(temp_img)))#/np.max(temp_img))
         X_meta.append([str(this_metadata['Gender'].values.squeeze()),str(this_metadata['Tissue'].values.squeeze())])
 
-
-
 del count,this_img,temp_img
 X = np.asarray(X)
 y = np.asarray(y)
@@ -107,7 +105,7 @@ X_norm = X
 y_norm = y
 
 # remove 5 random samples for testing later 
-test_idx, norm_idx = get_n_samples(10,y_norm,this_seed = 50)
+test_idx, norm_idx = get_n_samples(15,y_norm,this_seed = 50)
 
 # split the test set off from the rest (to be k folded)
 X_norm_test, y_norm_test = X_norm[test_idx], y_norm[test_idx]
@@ -132,6 +130,9 @@ np.savez(train_save_path,X = X_norm,y = y_norm)
 test_save_path = os.path.join(save_path,'test')
 np.savez(test_save_path,X = X_test,y = y_test)
 
+test_save_path_no_diff = os.path.join(save_path,'test_no_diff')
+np.savez(test_save_path_no_diff,X = X_norm_test,y =  y_norm_test)
+
 n_kfolds = 10
 skf = rskf(n_splits = 10, n_repeats = 1, random_state=50)
 k = np.asarray(list(range(len(y_norm_init))))
@@ -154,6 +155,7 @@ for train_idx,val_idx in skf.split(k,y_norm_init):
     count += 1
 
 print('validation uses',len(np.unique(np.asarray(temp))),'of',len(np.unique(np.asarray(k))), 'in dataset')
+print('test set uses', X_norm_test.shape[0], 'values of data')
 print('eof')
 
 # y_diff = []

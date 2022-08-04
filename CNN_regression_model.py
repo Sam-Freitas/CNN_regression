@@ -46,7 +46,7 @@ def fully_connected_CNN_v4(use_dropout = False, height = 128, width = 128, chann
 
     flattened = tf.keras.layers.Flatten()(pool_3)
 
-    d = Dense(512)(flattened)
+    d = Dense(512)(flattened) # 512
     d = Activation('swish')(d)
     d = Dropout(0.75)(d, training = use_dropout)
 
