@@ -22,7 +22,7 @@ import cv2
 import os
 
 def fully_connected_CNN_v4(use_dropout = False, height = 128, width = 128, channels = 2, kernal_size = (3,3), 
-    inital_filter_size = 16,keep_prob = 0.9,blocksize = 7, layers = 3, sub_layers = 3):
+    inital_filter_size = 16,keep_prob = 0.9,blocksize = 7, layers = 3, sub_layers = 3, dense_size = 128):
 
     inputs = Input((height, width, channels))
 
@@ -46,7 +46,7 @@ def fully_connected_CNN_v4(use_dropout = False, height = 128, width = 128, chann
 
     flattened = tf.keras.layers.Flatten()(pool_3)
 
-    d = Dense(512)(flattened) # 512
+    d = Dense(dense_size)(flattened) # 512
     d = Activation('swish')(d)
     d = Dropout(0.75)(d, training = use_dropout)
 

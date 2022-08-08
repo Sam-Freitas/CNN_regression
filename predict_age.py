@@ -48,20 +48,21 @@ def stacked_dataset(members, inputX):
 print('reading in data')
 plt.ioff()
 
-this_tissue = 'test'
+this_tissue = 'age_predict'
 
-inital_filter_size = 8
-dropsize = 0.99
+inital_filter_size = 16
+dropsize = 0.95
 blocksize = 5
 layers = 3
 sublayers = 0
 age_normalizer = 1
 input_height = input_width = 130
+dense_size = 1024
 
-checkpoints_path = os.path.join(os.getcwd(),'checkpoints_img130_895')
-
-epochs = 20
+epochs = 1000
 batch_size = 128
+
+checkpoints_path = os.path.join(os.getcwd(),'checkpointsremove_15_size130_dense128')
 
 k_folds = glob.glob(os.path.join('data_arrays','*.npz'))
 num_k_folds = 0
@@ -85,7 +86,7 @@ for i in range(num_k_folds):
         fully_connected_CNN_v4(
         height=input_height,width=input_width,channels=2,
         use_dropout=False,inital_filter_size=inital_filter_size,keep_prob = dropsize,blocksize = blocksize,
-        layers = layers, sub_layers = sublayers)
+        layers = layers, sub_layers = sublayers,dense_size = dense_size)
     )
     checkpoint_path = os.path.join(checkpoints_path,'checkpoints' + str(i) + '/cp.ckpt')
     models[count].load_weights(checkpoint_path)
@@ -108,7 +109,9 @@ for count, sample in enumerate(X_test):
 
     out.append(avg_predicted_age)
 
-cor_matrix = np.corrcoef(np.asarray(out),y_test)
+y_out = np.asarray(out)
+
+cor_matrix = np.corrcoef(y_test,y_out)
 cor_xy = cor_matrix[0,1]
 r_squared_test = round(cor_xy**2,4)
 print("Test",r_squared_test)
@@ -116,24 +119,21 @@ print("Test",r_squared_test)
 
 #################### this doesnt work yet
 
-test_error = np.sum(np.abs(y_test-avg_prediction_test))/len(y_test)
-train_error = np.sum(np.abs(y_train-avg_prediction_train))/len(y_train)
-m, b = np.polyfit(y_test,avg_prediction_test, deg = 1)
+test_error = np.sum(np.abs(y_test-y_out))/len(y_test)
+m, b = np.polyfit(y_test,y_out, deg = 1)
 
 plt.figure(1)
-plt.scatter(y_train,avg_prediction_train,color = 'r',alpha=0.05, label = 'training data')
-plt.scatter(y_test,avg_prediction_test,color = 'b',alpha=0.3, label = 'testing data')
-plt.plot(np.linspace(np.min(y_train), np.max(y_train)),np.linspace(np.min(y_train), np.max(y_train)))
+plt.scatter(y_test,y_out,color = 'r', label = 'training data')
+plt.plot(np.linspace(np.min(y_test), np.max(y_test)),np.linspace(np.min(y_test), np.max(y_test)))
 plt.plot(y_test, m*y_test + b,'m-')
 
-plt.text(np.min(y_train),np.max(y_train),"r^2: " + str(r_squared_train),fontsize = 12, color = 'r')
-plt.text(np.min(y_train),np.max(y_train)-(0.2)*np.max(y_train),"r^2: " + str(r_squared_test),fontsize = 12, color = 'b')
+plt.text(np.min(y_test),np.max(y_test)-(0.2)*np.max(y_test),"r^2: " + str(r_squared_test),fontsize = 12, color = 'b')
 
 plt.legend(loc = 'upper center')
-plt.title('Train error: ' + str(round(train_error,4)) + ' --- Test error: ' + str(round(test_error,4)),fontsize = 10)
+plt.title('Test error: ' + str(round(test_error,4)),fontsize = 10)
 plt.xlabel('Expected Age (years)')
 plt.ylabel('Predicted Age (years)')
 
-plt.savefig(fname = "test_model_predictions" + str(this_tissue).replace('/','-') + ".png")
+plt.savefig(fname = "age_prediction" + str(this_tissue).replace('/','-') + ".png")
 
 plt.close('all')

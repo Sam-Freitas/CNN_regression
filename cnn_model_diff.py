@@ -33,13 +33,14 @@ X_test,y_test = temp['X'],temp['y']
 # epochs = 15000
 # batch_size = 128
 
-inital_filter_size = 8
+inital_filter_size = 16
 dropsize = 0.95
 blocksize = 5
 layers = 3
 sublayers = 0
 age_normalizer = 1
 input_height = input_width = 130
+dense_size = 128
 
 epochs = 100
 batch_size = 128
@@ -73,7 +74,7 @@ for i in range(num_k_folds):
     model = fully_connected_CNN_v4(
         height=input_height,width=input_width,channels=2,
         use_dropout=True,inital_filter_size=inital_filter_size,keep_prob = dropsize,blocksize = blocksize,
-        layers = layers, sub_layers = sublayers
+        layers = layers, sub_layers = sublayers,dense_size = 1024
     )
     sample_weights = (np.abs(y_train)+1)**(1/2)
     # sample_weights = np.ones(y_train.shape)
@@ -81,9 +82,9 @@ for i in range(num_k_folds):
     save_checkpoints = tf.keras.callbacks.ModelCheckpoint(
         filepath = 'checkpoints/checkpoints' + str(i) + '/cp.ckpt', monitor = 'val_loss',
         mode = 'min',save_best_only = True,save_weights_only = True, verbose = 1)
-    earlystop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = 50, 
+    earlystop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = 500, 
         restore_best_weights=True) # patience 250
-    Reduce_LR = tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss',factor=0.1,patience=100)
+    Reduce_LR = tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss',factor=0.1,patience=450)
     on_epoch_end = test_on_improved_val_lossv3()
     optimizer = tf.keras.optimizers.Adam(learning_rate = 0.001,amsgrad=False) # 0.001
     model.compile(optimizer=optimizer,loss='MeanAbsoluteError',metrics=['RootMeanSquaredError'])
@@ -139,7 +140,7 @@ for i in range(num_k_folds):
             fully_connected_CNN_v4(
             height=input_height,width=input_width,channels=2,
             use_dropout=False,inital_filter_size=inital_filter_size,keep_prob = dropsize,blocksize = blocksize,
-            layers = layers, sub_layers = sublayers)
+            layers = layers, sub_layers = sublayers, dense_size = 1024)
         )
         checkpoint_path = 'checkpoints/checkpoints' + str(i) + '/cp.ckpt'
         models[count].load_weights(checkpoint_path)
