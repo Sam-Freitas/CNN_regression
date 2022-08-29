@@ -28,6 +28,8 @@ def fully_connected_CNN_v4(use_dropout = False, height = 128, width = 128, chann
 
     s = inputs
 
+    s = tf.keras.layers.GaussianNoise(stddev=0.01)(s,training = use_dropout)
+
     # first block of convolutions
     for i in range(layers):
         filt_mult = 2**i
@@ -38,17 +40,36 @@ def fully_connected_CNN_v4(use_dropout = False, height = 128, width = 128, chann
         if i == 0:
             conv_3 = Conv2D(this_filter_size, (3,3), activation = None, kernel_initializer = 'he_normal', padding = 'same', strides = (1,1))(s)
         else:
-            conv_3 = Conv2D(inital_filter_size*filt_mult, (3,3), activation = None, kernel_initializer = 'he_normal', padding = 'same', strides = (1,1))(pool_3)
+            conv_3 = Conv2D(this_filter_size, (3,3), activation = None, kernel_initializer = 'he_normal', padding = 'same', strides = (1,1))(pool_3)
+
         conv_3 = DropBlock2D(keep_prob = keep_prob, block_size = this_dropblock_size)(conv_3, training = use_dropout)
         conv_3 = Activation('elu')(conv_3)
 
+        for j in range(sub_layers):
+            if j == 0:
+                prev = conv_3
+            conv_3 = Conv2D(this_filter_size, (3,3), activation = None, kernel_initializer = 'he_normal', padding = 'same', strides = (1,1))(conv_3)
+            conv_3 = DropBlock2D(keep_prob = keep_prob, block_size = this_dropblock_size)(conv_3, training = use_dropout)
+            conv_3 = Activation('elu')(conv_3)
+
+        if i > 0 and sub_layers > 0:
+            conv_3 = tf.keras.layers.Add()([conv_3,prev])
+            
         pool_3 = MaxPooling2D((2,2))(conv_3)
 
     flattened = tf.keras.layers.Flatten()(pool_3)
 
     d = Dense(dense_size)(flattened) # 512
     d = Activation('swish')(d)
-    d = Dropout(0.75)(d, training = use_dropout)
+    d = Dropout(0.75)(d, training = use_dropout) #    d = Dropout(0.75)(d, training = use_dropout)
+
+    d = tf.keras.layers.GaussianNoise(stddev=0.01)(d,training = use_dropout)
+    # d = Dense(dense_size)(d) # 512
+    # d = Activation('swish')(d)
+    # d = Dropout(0.2)(d, training = use_dropout)
+    # d = Dense(dense_size)(d) # 512
+    # d = Activation('swish')(d)
+    # d = Dropout(0.2)(d, training = use_dropout)
 
     output = Dense(1,activation='linear')(d)
 
@@ -421,15 +442,29 @@ def diff_func(X_norm,y_norm,age_normalizer = 1):
         for j in range(num_loops):
             X2 = X_norm[j]
             y2 = y_norm[j]
-            X_diff.append(np.concatenate([np.atleast_3d(X1),np.atleast_3d(X2)],axis = -1).squeeze())
+            X_temp = np.concatenate([np.atleast_3d(X1),np.atleast_3d(X2)],axis = -1).squeeze()
             y_temp = (y1-y2)/age_normalizer
-            y_temp = np.round(y_temp,3)
+            y_temp = np.round(y_temp,3)            
+            X_diff.append(np.concatenate([np.atleast_3d(X1),np.atleast_3d(X2)],axis = -1).squeeze())
             y_diff.append(y_temp)
             count = count + 1
     X_diff = np.asarray(X_diff)
     y_diff = np.asarray(y_diff)
 
     return X_diff, y_diff
+
+def add_noise_to_dataset(X_in,y_in):
+
+    mu, sigma = 0, 0.1 # mean and standard deviation
+    s = np.random.normal(mu, sigma, X_in.shape)
+
+    temp = np.clip(s+X_in,0,1)
+
+    X_out = np.concatenate((X_in,temp),axis = 0)
+    y_out = np.concatenate((y_in,y_in),axis = 0)
+    # y_out = y_in
+
+    return X_out,y_out
 
 class test_on_improved_val_loss(tf.keras.callbacks.Callback):
     def on_epoch_end(self, epoch, logs=None):

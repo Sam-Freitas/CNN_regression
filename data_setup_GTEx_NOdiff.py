@@ -60,7 +60,7 @@ print('loading in data')
 #data_path = r"C:\Users\Lab PC\Documents\GitHub\IGTD\Results\All_tissues_1_9620\data"
 #metadata_path = 'dense_regression/meta_filtered.csv'
 
-data_path = '/groups/sutphin/NN_trainings/IGTD/Results/GTEx_merge_L1000_1_9409v1/data' 
+data_path = '/groups/sutphin/NN_trainings/IGTD/Results/GTEx_merge_L1000_1_9409/data' 
 metadata_path = '/xdisk/sutphin/GTEx/Normalized/GTEx_merge_L1000_sample.csv'
 
 imgs_list = natsorted(glob.glob(os.path.join(data_path,'*.txt')))
@@ -105,7 +105,7 @@ X_norm = X
 y_norm = y
 
 # remove 5 random samples for testing later 
-test_idx, norm_idx = get_n_samples(20,y_norm,this_seed = 50) # was 5
+test_idx, norm_idx = get_n_samples(100,y_norm,this_seed = 50) # was 5
 
 # split the test set off from the rest (to be k folded)
 X_norm_test, y_norm_test = X_norm[test_idx], y_norm[test_idx]

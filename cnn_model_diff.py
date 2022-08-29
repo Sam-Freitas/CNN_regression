@@ -1,6 +1,7 @@
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
 import tensorflow as tf
+import tensorflow_addons as tfa
 import numpy as np
 import pandas as pd
 import glob
@@ -9,14 +10,14 @@ import tqdm
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import MinMaxScaler, LabelEncoder
 from natsort import natsorted, natsort_keygen
-from CNN_regression_model import fully_connected_CNN_v2, fully_connected_CNN_v3, fully_connected_CNN_v4, plot_model,test_on_improved_val_lossv3,diff_func
+from CNN_regression_model import fully_connected_CNN_v2, fully_connected_CNN_v3, fully_connected_CNN_v4, plot_model,test_on_improved_val_lossv3,diff_func, add_noise_to_dataset
 from sklearn.preprocessing import PowerTransformer
 from pathlib import Path
 
 print('reading in data')
 plt.ioff()
 
-this_tissue = 'remove_15_size130_dense128'
+this_tissue = 'GTEx_diff'
 
 temp = np.load('data_arrays/test.npz')
 X_test,y_test = temp['X'],temp['y']
@@ -33,17 +34,31 @@ X_test,y_test = temp['X'],temp['y']
 # epochs = 15000
 # batch_size = 128
 
-inital_filter_size = 16
+# inital_filter_size = 12
+# dropsize = 0.95
+# blocksize = 5
+# layers = 3
+# sublayers = 0
+# age_normalizer = 1
+# input_height = input_width = 130
+# dense_size = 1024
+# batch_size = 128
+# lr = 0.0001
+
+# epochs = 10000
+
+inital_filter_size = 12
 dropsize = 0.95
 blocksize = 5
 layers = 3
 sublayers = 0
 age_normalizer = 1
-input_height = input_width = 130
-dense_size = 128
-
-epochs = 100
+input_height = input_width = 128
+dense_size = 1024
 batch_size = 128
+lr = 0.01
+
+epochs = 250
 
 k_folds = glob.glob(os.path.join('data_arrays','*.npz'))
 num_k_folds = 0
@@ -55,6 +70,13 @@ temp = np.load('data_arrays/All_data.npz')
 X_norm,y_norm = temp['X'],temp['y']
 
 assert X_norm.shape[1] == input_height and input_height == X_norm.shape[2]
+
+step = tf.Variable(0, trainable=False)
+schedule = tf.optimizers.schedules.PiecewiseConstantDecay(
+    [1000, 2000], [1e-0, 1e-1, 1e-2])
+# lr and wd can be a function or a tensor
+lr = 1e-1 * schedule(step)
+wd = lambda: 1e-4 * schedule(step)
 
 training_histories = []
 val_loss_hist = []
@@ -68,13 +90,15 @@ for i in range(num_k_folds):
     X_train, y_train = X_norm[train_idx],y_norm[train_idx]
     X_val, y_val = X_norm[val_idx],y_norm[val_idx]
 
+    # X_train,y_train = add_noise_to_dataset(X_train, y_train)
+
     X_train, y_train = diff_func(X_train, y_train,age_normalizer=age_normalizer)
     X_val, y_val = diff_func(X_val, y_val,age_normalizer=age_normalizer)
 
     model = fully_connected_CNN_v4(
         height=input_height,width=input_width,channels=2,
         use_dropout=True,inital_filter_size=inital_filter_size,keep_prob = dropsize,blocksize = blocksize,
-        layers = layers, sub_layers = sublayers,dense_size = 1024
+        layers = layers, sub_layers = sublayers,dense_size = dense_size
     )
     sample_weights = (np.abs(y_train)+1)**(1/2)
     # sample_weights = np.ones(y_train.shape)
@@ -86,7 +110,7 @@ for i in range(num_k_folds):
         restore_best_weights=True) # patience 250
     Reduce_LR = tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss',factor=0.1,patience=450)
     on_epoch_end = test_on_improved_val_lossv3()
-    optimizer = tf.keras.optimizers.Adam(learning_rate = 0.001,amsgrad=False) # 0.001
+    optimizer = tfa.optimizers.AdamW(learning_rate = lr, weight_decay = wd) # 0.001
     model.compile(optimizer=optimizer,loss='MeanAbsoluteError',metrics=['RootMeanSquaredError'])
 
     inital_epoch = (i*epochs)
@@ -140,7 +164,7 @@ for i in range(num_k_folds):
             fully_connected_CNN_v4(
             height=input_height,width=input_width,channels=2,
             use_dropout=False,inital_filter_size=inital_filter_size,keep_prob = dropsize,blocksize = blocksize,
-            layers = layers, sub_layers = sublayers, dense_size = 1024)
+            layers = layers, sub_layers = sublayers, dense_size = dense_size)
         )
         checkpoint_path = 'checkpoints/checkpoints' + str(i) + '/cp.ckpt'
         models[count].load_weights(checkpoint_path)

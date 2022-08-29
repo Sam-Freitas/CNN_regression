@@ -53,27 +53,34 @@ def get_n_samples(n,this_array,this_seed = 50):
 
 
 age_normalizer = 1
-img_size = 130
+img_size = 128
 print('loading in data')
-# data_path = '/groups/sutphin/NN_trainings/IGTD/Results/Liver;liver hepatocytes_1_9620/data'
-data_path = '/groups/sutphin/NN_trainings/IGTD/Results/All_tissues_1_9620/data'
-#data_path = r"C:\Users\Lab PC\Documents\GitHub\IGTD\Results\All_tissues_1_9620\data"
-metadata_path = 'dense_regression/meta_filtered.csv'
+# # data_path = '/groups/sutphin/NN_trainings/IGTD/Results/Liver;liver hepatocytes_1_9620/data'
+# data_path = '/groups/sutphin/NN_trainings/IGTD/Results/All_tissues_1_9620/data'
+# #data_path = r"C:\Users\Lab PC\Documents\GitHub\IGTD\Results\All_tissues_1_9620\data"
+# metadata_path = 'dense_regression/meta_filtered.csv'
+# imgs_list = natsorted(glob.glob(os.path.join(data_path,'*.txt')))
+# metadata = pd.read_csv(metadata_path)
+# metadata = metadata.sort_values(by = ['SRR.ID'], ascending = True)
+# imgs_list = np.sort(imgs_list)
+
+data_path = '/groups/sutphin/NN_trainings/IGTD/Results/GTEx_merge_L1000_1_9409/data' 
+metadata_path = '/xdisk/sutphin/GTEx/Normalized/GTEx_merge_L1000_sample.csv'
 imgs_list = natsorted(glob.glob(os.path.join(data_path,'*.txt')))
 metadata = pd.read_csv(metadata_path)
-metadata = metadata.sort_values(by = ['SRR.ID'], ascending = True)
+
+metadata = metadata.sort_values(by = ['ID'], ascending = True)
 imgs_list = np.sort(imgs_list)
 
-healthy_idx = metadata['Healthy'].values
-metadata_healthy = metadata.iloc[healthy_idx,:]
-
-SRR_values = metadata_healthy['SRR.ID'].values
-unique_tissues = np.unique(metadata_healthy['Tissue'].values)
+SRR_values = metadata['ID'].values
+unique_tissues = np.unique(metadata['Tissue'].values)
 
 # this_tissue = unique_tissues[0]
 # this_tissue = 'Liver;liver hepatocytes'
-this_tissue = 'Blood;PBMC'
+this_tissue = 'Blood'
 print('Current tissue',this_tissue)
+
+this_dataset = 'Shokhirev'
 
 X = []
 X_meta = []
@@ -85,15 +92,15 @@ for count in tqdm(range(len(imgs_list))):
 
     srr_id = os.path.basename(this_img)[1:-9]
     this_imgs_meta_idx = (SRR_values == srr_id)
-    this_metadata = metadata_healthy.iloc[this_imgs_meta_idx,:]
-    if (this_metadata['Tissue'].values == this_tissue).squeeze():
-        y.append(metadata_healthy.iloc[this_imgs_meta_idx,:]['Age'].values.squeeze())
+    this_metadata = metadata.iloc[this_imgs_meta_idx,:]
+    if this_tissue in str(this_metadata['Tissue'].values) and this_dataset == this_metadata['Source'].values: 
+        y.append(metadata.iloc[this_imgs_meta_idx,:]['Age'].values.squeeze())
         temp_img = np.loadtxt(this_img, comments='#',delimiter="\t",unpack=False)
 
         temp_img = cv2.resize(temp_img,(img_size,img_size))
 
         X.append((temp_img - np.min(temp_img))/(np.max(temp_img) - np.min(temp_img)))#/np.max(temp_img))
-        X_meta.append([str(this_metadata['Gender'].values.squeeze()),str(this_metadata['Tissue'].values.squeeze())])
+        X_meta.append([str(this_metadata['Sex'].values.squeeze()),str(this_metadata['Tissue'].values.squeeze())])
 
 del count,this_img,temp_img
 X = np.asarray(X)

@@ -15,27 +15,28 @@ from sklearn.preprocessing import PowerTransformer
 print('reading in data')
 plt.ioff()
 
-this_tissue = 'Shokhirev_NO_diff_10'
+this_tissue = 'GTEx_nodiff'
 
 temp = np.load('data_arrays/test.npz')
 X_test,y_test = temp['X'],temp['y']
 
-inital_filter_size = 8
-dropsize = 0.99
+inital_filter_size = 12
+dropsize = 0.95
 blocksize = 5
-layers = 3
+layers = 6
 sublayers = 0
 age_normalizer = 1
 # input_height = 74
 # input_width = 130
-input_height = input_width = 100
+input_height = input_width = 224
+dense_size = 1024
 
 # epochs = 15000
 epochs = 15000
-batch_size = 128
-es_patience = 1000
+batch_size = 8
+es_patience = 10000
 reduce_LR_patience = 2000
-learning_rate = 0.005
+learning_rate = 0.0001
 
 print(epochs, batch_size, es_patience, reduce_LR_patience, learning_rate)
 
@@ -64,7 +65,7 @@ for i in range(num_k_folds):
     model = fully_connected_CNN_v4(
         height=input_height,width=input_width,channels=1,
         use_dropout=True,inital_filter_size=inital_filter_size,keep_prob = dropsize,blocksize = blocksize,
-        layers = layers, sub_layers = sublayers
+        layers = layers, sub_layers = sublayers, dense_size=dense_size 
     )
     sample_weights = np.ones(y_train.shape)
 
@@ -122,7 +123,7 @@ for i in range(num_k_folds):
             fully_connected_CNN_v4(
             height=input_height,width=input_width,channels=1,
             use_dropout=False,inital_filter_size=inital_filter_size,keep_prob = dropsize,blocksize = blocksize,
-            layers = layers, sub_layers = sublayers)
+            layers = layers, sub_layers = sublayers, dense_size=dense_size )
         )
         checkpoint_path = this_tissue + '_checkpoints/checkpoints' + str(i) + '/cp.ckpt'
         models[count].load_weights(checkpoint_path)
