@@ -10,7 +10,7 @@ import tqdm
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import MinMaxScaler, LabelEncoder
 from natsort import natsorted, natsort_keygen
-from CNN_regression_model import fully_connected_CNN_v2, fully_connected_CNN_v3, fully_connected_CNN_v4, plot_model,test_on_improved_val_lossv3,diff_func, add_noise_to_dataset
+from CNN_regression_model import fully_connected_CNN_v4, plot_model,test_on_improved_val_lossv3,diff_func, add_noise_to_dataset
 from sklearn.preprocessing import PowerTransformer
 from pathlib import Path
 
@@ -53,12 +53,18 @@ blocksize = 5
 layers = 3
 sublayers = 0
 age_normalizer = 1
-input_height = input_width = 128
+input_height = input_width = 130
 dense_size = 1024
 batch_size = 128
-lr = 0.01
+lr = 0.0001
 
-epochs = 250
+lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+    lr,
+    decay_steps=50,
+    decay_rate=0.96,
+    staircase=True)
+
+epochs = 1000
 
 k_folds = glob.glob(os.path.join('data_arrays','*.npz'))
 num_k_folds = 0
@@ -71,17 +77,10 @@ X_norm,y_norm = temp['X'],temp['y']
 
 assert X_norm.shape[1] == input_height and input_height == X_norm.shape[2]
 
-step = tf.Variable(0, trainable=False)
-schedule = tf.optimizers.schedules.PiecewiseConstantDecay(
-    [1000, 2000], [1e-0, 1e-1, 1e-2])
-# lr and wd can be a function or a tensor
-lr = 1e-1 * schedule(step)
-wd = lambda: 1e-4 * schedule(step)
-
 training_histories = []
 val_loss_hist = []
 
-for i in range(num_k_folds):
+for i in range(8,num_k_folds):
     temp = np.load('data_arrays/train'+ str(i) +'.npz')
     train_idx = temp['idx']
     temp = np.load('data_arrays/val'+ str(i) +'.npz')
@@ -101,17 +100,17 @@ for i in range(num_k_folds):
         layers = layers, sub_layers = sublayers,dense_size = dense_size
     )
     sample_weights = (np.abs(y_train)+1)**(1/2)
-    # sample_weights = np.ones(y_train.shape)
 
     save_checkpoints = tf.keras.callbacks.ModelCheckpoint(
         filepath = 'checkpoints/checkpoints' + str(i) + '/cp.ckpt', monitor = 'val_loss',
         mode = 'min',save_best_only = True,save_weights_only = True, verbose = 1)
-    earlystop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = 500, 
+    earlystop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = 200, 
         restore_best_weights=True) # patience 250
     Reduce_LR = tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss',factor=0.1,patience=450)
     on_epoch_end = test_on_improved_val_lossv3()
-    optimizer = tfa.optimizers.AdamW(learning_rate = lr, weight_decay = wd) # 0.001
-    model.compile(optimizer=optimizer,loss='MeanAbsoluteError',metrics=['RootMeanSquaredError'])
+    optimizer = tf.keras.optimizers.Adam(learning_rate = lr)
+    model.compile(optimizer=optimizer,loss='MeanAbsoluteError',
+        metrics = ['RootMeanSquaredError'])
 
     inital_epoch = (i*epochs)
     this_epochs = inital_epoch + epochs
@@ -151,6 +150,43 @@ def stacked_dataset(members, inputX):
 	stackX = stackX.reshape((stackX.shape[0], stackX.shape[1]*stackX.shape[2]))
 	return stackX
 
+def define_stacked_model(members):
+	# update all layers in all models to not be trainable
+    for i in range(len(members)):
+        model = members[i]
+        for layer in model.layers:
+			# make not trainable
+            layer.trainable = False
+			# rename to avoid 'unique layer name' issue
+            layer._name = 'ensemble_' + str(i+1) + '_' + layer.name
+	# define multi-headed input
+    ensemble_visible = [model.input for model in members]
+	# concatenate merge output from each model
+    ensemble_outputs = [model.output for model in members]
+    merge = tf.keras.layers.concatenate(ensemble_outputs)
+    hidden = tf.keras.layers.Dense(512, activation='relu')(merge)
+    output = tf.keras.layers.Dense(1, activation='linear')(hidden)
+    model = tf.keras.Model(inputs=ensemble_visible, outputs=output)
+	# compile
+    optimizer = tf.keras.optimizers.Adam(learning_rate = 0.001)
+    model.compile(loss='MeanAbsoluteError', optimizer=optimizer)
+    return model
+
+def fit_stacked_model(model, inputX, inputy):
+	# prepare input data
+    X = [inputX for _ in range(len(model.input))]
+    sub_epochs = 100
+    es = tf.keras.callbacks.EarlyStopping(patience=sub_epochs,restore_best_weights=True,verbose=1)
+	# fit model
+    model.fit(X, inputy, epochs=sub_epochs, verbose=1, callbacks=es, validation_split=0.2)
+    return model
+
+def predict_stacked_model(model, inputX):
+	# prepare input data
+	X = [inputX for _ in range(len(model.input))]
+	# make prediction
+	return model.predict(X, verbose=0)
+
 models = []
 count = 0
 print('Stacking models')
@@ -168,16 +204,28 @@ for i in range(num_k_folds):
         )
         checkpoint_path = 'checkpoints/checkpoints' + str(i) + '/cp.ckpt'
         models[count].load_weights(checkpoint_path)
-        optimizer = tf.keras.optimizers.Adam(learning_rate=0.001,amsgrad=True) # 0.00001
+        optimizer = tf.keras.optimizers.Adam(learning_rate = 0.001)
         models[count].compile(optimizer=optimizer,loss='MeanAbsoluteError',metrics=['RootMeanSquaredError'])
 
         count = count + 1
 
+
 print("using:", count, "of the cross valid")
 X_train, y_train = diff_func(X_norm, y_norm,age_normalizer=age_normalizer)
 
-ensemble_prediction_test = stacked_dataset(models, X_test)
-ensemble_prediction_train = stacked_dataset(models, X_train)
+print('stacking models')
+stacked_model = define_stacked_model(models)
+print('fitting ensemble model')
+stacked_model = fit_stacked_model(stacked_model, X_train, y_train)
+print('saving ensemble model')
+stacked_model.save('stacked_model2')
+
+# ensemble_prediction_test = stacked_dataset(models, X_test)
+# ensemble_prediction_train = stacked_dataset(models, X_train)
+
+print('predicting using ensemble model')
+ensemble_prediction_test = predict_stacked_model(stacked_model, X_test)
+ensemble_prediction_train = predict_stacked_model(stacked_model, X_train)
 
 avg_prediction_test = np.mean(ensemble_prediction_test,axis = 1)
 avg_prediction_train = np.mean(ensemble_prediction_train,axis = 1)

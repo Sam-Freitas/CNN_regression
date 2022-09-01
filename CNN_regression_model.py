@@ -63,7 +63,6 @@ def fully_connected_CNN_v4(use_dropout = False, height = 128, width = 128, chann
     d = Activation('swish')(d)
     d = Dropout(0.75)(d, training = use_dropout) #    d = Dropout(0.75)(d, training = use_dropout)
 
-    d = tf.keras.layers.GaussianNoise(stddev=0.01)(d,training = use_dropout)
     # d = Dense(dense_size)(d) # 512
     # d = Activation('swish')(d)
     # d = Dropout(0.2)(d, training = use_dropout)
